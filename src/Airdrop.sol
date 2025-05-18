@@ -22,7 +22,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     uint256[] public unlocks;
     mapping(uint256 portionId => mapping(address account => uint256 amount)) public portions;
 
-    uint256 public constant precision = 10_00_00;
+    uint256 public constant precision = 1_00_00_00;
     uint256 public constant cleanUpBuffer = 60 days;
 
     /// Events
@@ -37,7 +37,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     error CleanUpNotAvailable();
     error StakingUnavailableForThisAirdrop();
     error SettingsLocked();
-    error NotEligibleOrAlreadyClaimed();
+    error TotalZero();
     error ZeroAddress();
     error InvalidTimestamp();
     error ArrayLengthMismatch();
@@ -83,7 +83,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             unlocks.push(timestamps[i]);
         }
         // Default value for penalty will be 50%.
-        penalty = 50_00;
+        penalty = 50_00_00;
     }
 
     /// @notice Function to lock the contract settings in place.
@@ -93,7 +93,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         emit Locked();
     }
 
-    /// @notice Function to change the penalty percentage, represented in bps.
+    /// @notice Function to change the penalty percentage, represented in pips.
     function updatePenalty(uint256 _penalty) external onlyOwner locked {
         if (_penalty > precision) revert();
         penalty = _penalty;
@@ -133,7 +133,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         mapping(address => uint256) storage _portions = portions[index];
         uint256 n = accounts.length;
         // Ensure array lengths match.
-        if (n == amounts.length) revert ArrayLengthMismatch();
+        if (n != amounts.length) revert ArrayLengthMismatch();
         for (uint256 i; i < n; ++i) {
             // Assign the account's portion for the index.
             _portions[accounts[i]] = amounts[i];
@@ -159,11 +159,13 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         uint256 n = unlocks.length;
         uint256 total;
         for (uint256 i; i < n; ++i) {
-            total += portions[i][msg.sender];
-            delete portions[i][msg.sender];
+            if (block.timestamp > unlocks[i]) {
+                total += portions[i][msg.sender];
+                delete portions[i][msg.sender];
+            }
         }
         // Ensure user has unwithdrawn funds.
-        if (total == 0) revert NotEligibleOrAlreadyClaimed();
+        if (total == 0) revert TotalZero();
         // Compute the message hash.
         bytes32 hash =
             keccak256(abi.encode(address(this), block.chainid, msg.sender, toWallet, total)).toEthSignedMessageHash();
