@@ -44,6 +44,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     error ArrayLengthMismatch();
     error InvalidIndex();
 
+    // TODO: Ensure locks make sense
     modifier locked() {
         _lockCheck();
         _;
@@ -114,7 +115,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     }
 
     /// @notice Function to change the value of a certain timestamp.
-    function changeTimestamp(uint256 index, uint256 timestamp) external onlyOwner /* add lock? */ {
+    function changeTimestamp(uint256 index, uint256 timestamp) external onlyOwner /* TODO: add lock? */ {
         // Ensure that the new timestamp value is lower than the next one and greater than the previous one (if they exist).
         if (index > unlocks.length - 1) revert InvalidIndex();
         if (
@@ -153,6 +154,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         emit Deposit(amount);
     }
 
+    // TODO: Consider switching to percents in unlocks, and set one allocation per user (this might result in dust).
     /// @notice Function to withdraw the airdrop.
     /// @dev Callable by anyone eligible.
     /// @param toWallet describes if user wants to retrieves the airdrop directly to the owned EOA (includes penalty by default) or to the staker contract with a chosen lockup period (can include penalty but doesn't by default).
@@ -198,6 +200,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         }
     }
 
+    // TODO: Maybe claim all at once?
     /// @notice Function to clean up the portions if they remain unclaimed for a `cleanUpBuffer` period of time after the final portion unlock.
     function cleanUp(address[] calldata accounts) external onlyOwner {
         // Gas opts.
