@@ -29,7 +29,8 @@ contract AirdropTest is Test {
         Vm.Wallet memory signer = vm.createWallet(vm.randomUint());
 
         uint256[] memory timestamps = new uint256[](0);
-        Airdrop instance = Airdrop(airdropFactory.deploy(address(token), address(1), address(1), signer.addr, timestamps));
+        Airdrop instance =
+            Airdrop(airdropFactory.deploy(address(token), address(1), address(1), signer.addr, timestamps));
 
         assertNotEq(address(instance), address(0));
         assertEq(address(instance), airdropFactory.getLatestDeployment());
@@ -57,11 +58,10 @@ contract AirdropTest is Test {
         assertEq(amounts[0], instance.portions(0, accounts[0]));
 
         // Withdraw
-        bytes32 hash = keccak256(abi.encode(address(this), block.chainid, msg.sender, true, amounts[0])).toEthSignedMessageHash();
+        bytes32 hash =
+            keccak256(abi.encode(address(this), block.chainid, msg.sender, true, amounts[0])).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signer, hash);
-        bytes memory signature = abi.encodePacked(
-            r, s, v
-        );
+        bytes memory signature = abi.encodePacked(r, s, v);
         vm.prank(user);
         vm.warp(block.timestamp + 11);
         instance.withdraw(true, 0, signature);

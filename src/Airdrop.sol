@@ -17,7 +17,8 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     address public treasury;
     address public token;
     uint256 public totalDeposited;
-    uint256 public penalty;
+    uint256 public penaltyWallet;
+    uint256 public penaltyStaker;
     bool public lock;
     uint256[] public unlocks;
     mapping(uint256 portionId => mapping(address account => uint256 amount)) public portions;
@@ -31,7 +32,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     event Locked();
     event TimestampChanged(uint256 indexed index, uint256 newTimestamp);
     event WalletWithdrawal(address indexed account, uint256 total, uint256 penalty);
-    event StakerWithdrawal(address indexed account, uint256 total, uint256 indexed lockupIndex);
+    event StakerWithdrawal(address indexed account, uint256 total, uint256 penalty, uint256 indexed lockupIndex);
 
     /// Errors
     error CleanUpNotAvailable();
@@ -82,8 +83,9 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             if (timestamps[i] <= timestamps[i - 1]) revert InvalidTimestamp();
             unlocks.push(timestamps[i]);
         }
-        // Default value for penalty will be 50%.
-        penalty = 50_00_00;
+        // Default value for wallet withdrawal penalty is be 50%.
+        penaltyWallet = 50_00_00;
+        // Default value for staker withdrawal penalty is be 0%.
     }
 
     /// @notice Function to lock the contract settings in place.
@@ -94,9 +96,10 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     }
 
     /// @notice Function to change the penalty percentage, represented in pips.
-    function updatePenalty(uint256 _penalty) external onlyOwner locked {
-        if (_penalty > precision) revert();
-        penalty = _penalty;
+    function updatePenaltyValues(uint256 _penaltyWallet, uint256 _penaltyStaker) external onlyOwner locked {
+        if (_penaltyWallet > precision || _penaltyStaker > precision) revert();
+        penaltyWallet = _penaltyWallet;
+        penaltyStaker = _penaltyStaker;
     }
 
     /// @notice Function to introduce a new timestamp to the unlocks array.
@@ -152,7 +155,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
 
     /// @notice Function to withdraw the airdrop.
     /// @dev Callable by anyone eligible.
-    /// @param toWallet describes if user wants to retrieves the airdrop directly to the owned EOA (includes penalty) or to the staker contract with a chosen lockup period.
+    /// @param toWallet describes if user wants to retrieves the airdrop directly to the owned EOA (includes penalty by default) or to the staker contract with a chosen lockup period (can include penalty but doesn't by default).
     /// @param lockupIndex is an index of a lockup period. This argument is required only if user chooses 'withdrawal to staker' (`toWallet` == false) option when calling this function.
     /// @param signature represents an extra layer of safety, a message of approval signed by `signer`.
     function withdraw(bool toWallet, uint256 lockupIndex, bytes calldata signature) external {
@@ -171,19 +174,27 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             keccak256(abi.encode(address(this), block.chainid, msg.sender, toWallet, total)).toEthSignedMessageHash();
         // Ensure signature validity.
         if (signer.isValidSignatureNow(hash, signature)) revert();
-        // Make the withdrawal, either to wallet (fees applied) or to the staker contract (if available for the present airdrop).
+        // Make the withdrawal, either to wallet or to the staker contract (if available for the present airdrop).
         if (toWallet) {
             // Compute penalty, transfer it to treasury and the rest to the user..
-            uint256 penaltyAmount = total * penalty / precision;
+            uint256 penaltyAmount = total * penaltyWallet / precision;
             IERC20(token).transfer(msg.sender, total - penaltyAmount);
-            IERC20(token).transfer(treasury, penaltyAmount);
+            if (penaltyAmount != 0) {
+                IERC20(token).transfer(treasury, penaltyAmount);
+                total -= penaltyAmount;
+            }
             emit WalletWithdrawal(msg.sender, total, penaltyAmount);
         } else {
             // Check if staker is set.
             if (staker == address(0)) revert StakingUnavailableForThisAirdrop();
             // Forward funds to the staker, with information about the chosen lockup period.
+            uint256 penaltyAmount = total * penaltyStaker / precision;
+            if (penaltyAmount != 0) {
+                IERC20(token).transfer(treasury, penaltyAmount);
+                total -= penaltyAmount;
+            }
             IStaker(staker).stake(msg.sender, total, lockupIndex);
-            emit StakerWithdrawal(msg.sender, total, lockupIndex);
+            emit StakerWithdrawal(msg.sender, total, penaltyAmount, lockupIndex);
         }
     }
 
