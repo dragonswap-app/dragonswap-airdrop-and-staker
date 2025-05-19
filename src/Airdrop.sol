@@ -44,7 +44,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     error ArrayLengthMismatch();
     error InvalidIndex();
 
-    // TODO: Ensure locks make sense
+    /// @dev Disables addition of new portions, changing amounts and adding new unlock timestamps.
     modifier locked() {
         _lockCheck();
         _;
@@ -115,7 +115,8 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     }
 
     /// @notice Function to change the value of a certain timestamp.
-    function changeTimestamp(uint256 index, uint256 timestamp) external onlyOwner /* TODO: add lock? */ {
+    /// @dev Leaving this function without a lock lets us shift times if needed. Might change this.
+    function changeTimestamp(uint256 index, uint256 timestamp) external onlyOwner {
         // Ensure that the new timestamp value is lower than the next one and greater than the previous one (if they exist).
         if (index > unlocks.length - 1) revert InvalidIndex();
         if (
@@ -200,8 +201,8 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         }
     }
 
-    // TODO: Maybe claim all at once?
     /// @notice Function to clean up the portions if they remain unclaimed for a `cleanUpBuffer` period of time after the final portion unlock.
+    /// @dev Specifying wallets is present as it's needed for the portion removal.
     function cleanUp(address[] calldata accounts) external onlyOwner {
         // Gas opts.
         uint256 n = accounts.length;
