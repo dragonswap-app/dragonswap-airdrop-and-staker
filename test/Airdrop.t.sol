@@ -30,7 +30,7 @@ contract AirdropTest is Test {
 
         uint256[] memory timestamps = new uint256[](0);
         Airdrop instance =
-            Airdrop(airdropFactory.deploy(address(token), address(1), address(1), signer.addr, timestamps));
+            Airdrop(airdropFactory.deploy(address(token), address(1), address(1), signer.addr, address(0), timestamps));
 
         assertNotEq(address(instance), address(0));
         assertEq(address(instance), airdropFactory.getLatestDeployment());

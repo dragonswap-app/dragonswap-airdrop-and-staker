@@ -29,7 +29,7 @@ contract AirdropFactory is Ownable {
     }
 
     /// @notice Function to deploy new airdrop instance through the factory
-    function deploy(address token, address staker, address treasury, address signer, uint256[] calldata timestamps)
+    function deploy(address token, address staker, address treasury, address signer, address _owner, uint256[] calldata timestamps)
         external
         onlyOwner
         returns (address instance)
@@ -48,7 +48,7 @@ contract AirdropFactory is Ownable {
             staker,
             treasury,
             signer,
-            owner(),
+            _owner != address(0) ? _owner : owner(),
             timestamps
         );
 
