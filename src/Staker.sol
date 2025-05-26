@@ -12,8 +12,8 @@ contract DragonswapRevenueShareStaking is Ownable, StakedDragonswapToken {
     struct Stake {
         uint256 amount;
         uint256 unlockTimestamp;
-        // bool claimed;
     }
+    // bool claimed;
     //uint256 multiplier;
 
     /// @notice The address of the Dragonswap token
@@ -276,6 +276,23 @@ contract DragonswapRevenueShareStaking is Ownable, StakedDragonswapToken {
 
         dragon.safeTransfer(msg.sender, stakeIndex);
         emit EmergencyWithdraw(msg.sender, stakeIndex);
+    }
+
+    /**
+     * @notice Sweep token to the `to` address
+     * @param token The address of the token to sweep
+     * @param to The address that will receive `token` balance
+     */
+    function sweep(IERC20 token, address to) external onlyOwner {
+        if (isRewardToken[address(token)] || address(token) == address(dragon)) revert();
+
+        uint256 balance = token.balanceOf(address(this));
+
+        if (balance == 0) revert();
+
+        token.safeTransfer(to, balance);
+
+        emit Unstuck(address(token), to, balance);
     }
 
     /**
