@@ -12,8 +12,8 @@ contract DragonswapRevenueShareStaking is Ownable, StakedDragonswapToken {
     struct Stake {
         uint256 amount;
         uint256 unlockTimestamp;
+        // bool claimed;
     }
-    // bool claimed;
     //uint256 multiplier;
 
     /// @notice The address of the Dragonswap token
@@ -49,7 +49,7 @@ contract DragonswapRevenueShareStaking is Ownable, StakedDragonswapToken {
     event EmergencyWithdraw(address indexed user, uint256 amount);
     event Payout(address indexed user, IERC20 indexed rewardToken, uint256 amount);
     event RewardTokenAdded(address indexed token);
-    event RewardTokenRemoved(IERC20 indexed token);
+    event RewardTokenRemoved(address indexed token);
     event Unstuck(address indexed token, address indexed to, uint256 amount);
 
     /// Errors
@@ -165,6 +165,25 @@ contract DragonswapRevenueShareStaking is Ownable, StakedDragonswapToken {
         rewardTokens.push(_rewardToken);
         isRewardToken[_rewardToken] = true;
         emit RewardTokenAdded(_rewardToken);
+    }
+
+
+    /**
+     * @notice Remove a reward token
+     * @param _rewardToken The address of the reward token
+     */
+    function removeRewardToken(address _rewardToken) external onlyOwner {
+        if (!isRewardToken[_rewardToken]) revert NotPresent();
+        delete isRewardToken[_rewardToken];
+        uint256 numberOfRewardTokens = rewardTokens.length;
+        for (uint256 i; i < numberOfRewardTokens; ++i) {
+            if (rewardTokens[i] == _rewardToken) {
+                rewardTokens[i] = rewardTokens[numberOfRewardTokens - 1];
+                rewardTokens.pop();
+                break;
+            }
+        }
+        emit RewardTokenRemoved(_rewardToken);
     }
 
     /**
