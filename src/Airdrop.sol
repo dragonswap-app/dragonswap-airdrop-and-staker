@@ -9,6 +9,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Initializable, OwnableUpgradeable} from "@openzeppelin/u-contracts/access/OwnableUpgradeable.sol";
 
 contract Airdrop is Initializable, OwnableUpgradeable {
+    error Airdrop__SignatureIsInvalid();
+
     using MessageHashUtils for bytes32;
     using SignatureChecker for address;
 
@@ -21,7 +23,8 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     uint256 public penaltyStaker;
     bool public lock;
     uint256[] public unlocks;
-    mapping(uint256 portionId => mapping(address account => uint256 amount)) public portions;
+    mapping(uint256 portionId => mapping(address account => uint256 amount))
+        public portions;
 
     uint256 public constant precision = 1_00_00_00;
     uint256 public constant cleanUpBuffer = 60 days;
@@ -31,8 +34,17 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     event TimestampAdded(uint256 indexed index, uint256 timestamp);
     event Locked();
     event TimestampChanged(uint256 indexed index, uint256 newTimestamp);
-    event WalletWithdrawal(address indexed account, uint256 total, uint256 penalty);
-    event StakerWithdrawal(address indexed account, uint256 total, uint256 penalty, uint256 indexed lockupIndex);
+    event WalletWithdrawal(
+        address indexed account,
+        uint256 total,
+        uint256 penalty
+    );
+    event StakerWithdrawal(
+        address indexed account,
+        uint256 total,
+        uint256 penalty,
+        uint256 indexed lockupIndex
+    );
 
     /// Errors
     error CleanUpNotAvailable();
@@ -97,7 +109,10 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     }
 
     /// @notice Function to change the penalty percentage, represented in pips.
-    function updatePenaltyValues(uint256 _penaltyWallet, uint256 _penaltyStaker) external onlyOwner locked {
+    function updatePenaltyValues(
+        uint256 _penaltyWallet,
+        uint256 _penaltyStaker
+    ) external onlyOwner locked {
         if (_penaltyWallet > precision || _penaltyStaker > precision) revert();
         penaltyWallet = _penaltyWallet;
         penaltyStaker = _penaltyStaker;
@@ -108,7 +123,8 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         // Gas opt.
         uint256 length = unlocks.length;
         // Ensure the new timestamp is in the future compared to the latest one.
-        if (length > 0 && timestamp <= unlocks[length - 1]) revert InvalidTimestamp();
+        if (length > 0 && timestamp <= unlocks[length - 1])
+            revert InvalidTimestamp();
         unlocks.push(timestamp);
         // Length represents timestamp's id in the unlocks array.
         emit TimestampAdded(length, timestamp);
@@ -116,12 +132,15 @@ contract Airdrop is Initializable, OwnableUpgradeable {
 
     /// @notice Function to change the value of a certain timestamp.
     /// @dev Leaving this function without a lock lets us shift times if needed. Might change this.
-    function changeTimestamp(uint256 index, uint256 timestamp) external onlyOwner {
+    function changeTimestamp(
+        uint256 index,
+        uint256 timestamp
+    ) external onlyOwner {
         // Ensure that the new timestamp value is lower than the next one and greater than the previous one (if they exist).
         if (index > unlocks.length - 1) revert InvalidIndex();
         if (
-            (index < unlocks.length - 2 && timestamp > unlocks[index + 1])
-                || (index > 0 && timestamp < unlocks[index - 1])
+            (index < unlocks.length - 2 && timestamp > unlocks[index + 1]) ||
+            (index > 0 && timestamp < unlocks[index - 1])
         ) revert InvalidTimestamp();
         // Assign the timestamp.
         unlocks[index] = timestamp;
@@ -129,11 +148,11 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     }
 
     /// @notice Assign portions of a determined unlock index for accounts.
-    function assignPortions(uint256 index, address[] memory accounts, uint256[] memory amounts)
-        external
-        onlyOwner
-        locked
-    {
+    function assignPortions(
+        uint256 index,
+        address[] memory accounts,
+        uint256[] memory amounts
+    ) external onlyOwner locked {
         // Gas opt.
         mapping(address => uint256) storage _portions = portions[index];
         uint256 n = accounts.length;
@@ -161,7 +180,11 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     /// @param toWallet describes if user wants to retrieves the airdrop directly to the owned EOA (includes penalty by default) or to the staker contract with a chosen lockup period (can include penalty but doesn't by default).
     /// @param lockupIndex is an index of a lockup period. This argument is required only if user chooses 'withdrawal to staker' (`toWallet` == false) option when calling this function.
     /// @param signature represents an extra layer of safety, a message of approval signed by `signer`.
-    function withdraw(bool toWallet, uint256 lockupIndex, bytes calldata signature) external {
+    function withdraw(
+        bool toWallet,
+        uint256 lockupIndex,
+        bytes calldata signature
+    ) external {
         uint256 n = unlocks.length;
         uint256 total;
         for (uint256 i; i < n; ++i) {
@@ -173,14 +196,22 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         // Ensure user has unwithdrawn funds.
         if (total == 0) revert TotalZero();
         // Compute the message hash.
-        bytes32 hash =
-            keccak256(abi.encode(address(this), block.chainid, msg.sender, toWallet, total)).toEthSignedMessageHash();
+        bytes32 hash = keccak256(
+            abi.encode(
+                address(this),
+                block.chainid,
+                msg.sender,
+                toWallet,
+                total
+            )
+        ).toEthSignedMessageHash();
         // Ensure signature validity.
-        if (signer.isValidSignatureNow(hash, signature)) revert();
+        if (!signer.isValidSignatureNow(hash, signature))
+            revert Airdrop__SignatureIsInvalid();
         // Make the withdrawal, either to wallet or to the staker contract (if available for the present airdrop).
         if (toWallet) {
             // Compute penalty, transfer it to treasury and the rest to the user..
-            uint256 penaltyAmount = total * penaltyWallet / precision;
+            uint256 penaltyAmount = (total * penaltyWallet) / precision;
             IERC20(token).transfer(msg.sender, total - penaltyAmount);
             if (penaltyAmount != 0) {
                 IERC20(token).transfer(treasury, penaltyAmount);
@@ -191,13 +222,18 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             // Check if staker is set.
             if (staker == address(0)) revert StakingUnavailableForThisAirdrop();
             // Forward funds to the staker, with information about the chosen lockup period.
-            uint256 penaltyAmount = total * penaltyStaker / precision;
+            uint256 penaltyAmount = (total * penaltyStaker) / precision;
             if (penaltyAmount != 0) {
                 IERC20(token).transfer(treasury, penaltyAmount);
                 total -= penaltyAmount;
             }
             IStaker(staker).stake(msg.sender, total, lockupIndex);
-            emit StakerWithdrawal(msg.sender, total, penaltyAmount, lockupIndex);
+            emit StakerWithdrawal(
+                msg.sender,
+                total,
+                penaltyAmount,
+                lockupIndex
+            );
         }
     }
 
@@ -208,7 +244,8 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         uint256 n = accounts.length;
         uint256 _unlocks = unlocks.length;
         // Ensure cleanup is available according to the previously described time-lock rule.
-        if (block.timestamp < unlocks[_unlocks - 1] + cleanUpBuffer) revert CleanUpNotAvailable();
+        if (block.timestamp < unlocks[_unlocks - 1] + cleanUpBuffer)
+            revert CleanUpNotAvailable();
         uint256 total;
         for (uint256 i; i < n; ++i) {
             address account = accounts[i];
