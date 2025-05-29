@@ -58,13 +58,14 @@ contract AirdropTest is Test {
         assertEq(amounts[0], instance.portions(0, accounts[0]));
 
         // Withdraw
+        bool toWallet = true;
         bytes32 hash =
-            keccak256(abi.encode(address(this), block.chainid, msg.sender, true, amounts[0])).toEthSignedMessageHash();
+            keccak256(abi.encode(address(instance), block.chainid, user, toWallet, amounts[0])).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signer, hash);
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.prank(user);
         vm.warp(block.timestamp + 11);
-        instance.withdraw(true, 0, signature);
+        instance.withdraw(toWallet, 0, signature);
         uint256 penalty = amounts[0] * 50_00_00 / 1_00_00_00;
         assertEq(token.balanceOf(user), amounts[0] - penalty);
         assertEq(token.balanceOf(address(1)), penalty);
