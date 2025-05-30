@@ -8,6 +8,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
+/* TODO */
+/* Refactor all the things */
+
 // Mock ERC20 token for testing
 contract MockToken is ERC20 {
     constructor() ERC20("Mock Token", "MOCK") {
@@ -92,76 +95,40 @@ contract AirdropSigningVulnerabilityTest is Test {
 
     function testValidSignatureShouldPass() public {
         console2.log("\x1B[35mSTARTING VALID SIGNATURE TEST \x1B[0m");
-        console2.log(
-            "\x1B[34mAlice balance before:\x1B[0m",
-            token.balanceOf(alice) / 10 ** 18
-        );
-        console2.log(
-            "\x1B[34mContract balance before:\x1B[0m",
-            token.balanceOf(address(airdrop)) / 10 ** 18
-        );
+        console2.log("\x1B[34mAlice balance before:\x1B[0m", token.balanceOf(alice) / 10 ** 18);
+        console2.log("\x1B[34mContract balance before:\x1B[0m", token.balanceOf(address(airdrop)) / 10 ** 18);
 
         // Fast forward past first unlock
         vm.warp(block.timestamp + 2 days);
 
         // Create valid signature for Alice's withdrawal
-        bytes32 messageHash = keccak256(
-            abi.encode(
-                address(airdrop),
-                block.chainid,
-                alice,
-                true, // toWallet
-                ALICE_PORTION
-            )
-        ).toEthSignedMessageHash();
+        bytes32 messageHash = keccak256(abi.encode(address(airdrop), block.chainid, alice, true, ALICE_PORTION)) // toWallet
+            .toEthSignedMessageHash();
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            signerPrivateKey,
-            messageHash
-        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, messageHash);
         bytes memory validSignature = abi.encodePacked(r, s, v);
 
         // Try to withdraw with valid signature
         vm.startPrank(alice);
-        airdrop.withdraw(true, 0, validSignature); // TODO: REENABLE FOR FULL TEST
+        airdrop.withdraw(true, 0, validSignature);
         vm.stopPrank();
 
-        console2.log(
-            "\x1B[33mAlice balance after:\x1B[0m",
-            token.balanceOf(alice) / 10 ** 18
-        );
-        console2.log(
-            "\x1B[33mContract balance after:",
-            token.balanceOf(address(airdrop)) / 10 ** 18,
-            "\x1B[0m"
-        );
+        console2.log("\x1B[33mAlice balance after:\x1B[0m", token.balanceOf(alice) / 10 ** 18);
+        console2.log("\x1B[33mContract balance after:", token.balanceOf(address(airdrop)) / 10 ** 18, "\x1B[0m");
     }
 
     function testInvalidSignatureShouldRevert() public {
         console2.log("\x1B[35mSTARTING INVALID SIGNATURE TEST \x1B[0m");
-        console2.log(
-            "\x1B[34mAlice balance before:\x1B[0m",
-            token.balanceOf(alice) / 10 ** 18
-        );
-        console2.log(
-            "\x1B[34mContract balance before:\x1B[0m",
-            token.balanceOf(address(airdrop)) / 10 ** 18
-        );
+        console2.log("\x1B[34mAlice balance before:\x1B[0m", token.balanceOf(alice) / 10 ** 18);
+        console2.log("\x1B[34mContract balance before:\x1B[0m", token.balanceOf(address(airdrop)) / 10 ** 18);
 
         // ARRANGE
         vm.warp(block.timestamp + 2 days);
 
         uint256 wrongSignerKey = 0xDEADBEEF; // Invalid signature
 
-        bytes32 messageHash = keccak256(
-            abi.encode(
-                address(airdrop),
-                block.chainid,
-                alice,
-                true, // toWallet
-                ALICE_PORTION
-            )
-        ).toEthSignedMessageHash();
+        bytes32 messageHash = keccak256(abi.encode(address(airdrop), block.chainid, alice, true, ALICE_PORTION)) // toWallet
+            .toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongSignerKey, messageHash);
         bytes memory invalidSignature = abi.encodePacked(r, s, v);
 
@@ -169,14 +136,8 @@ contract AirdropSigningVulnerabilityTest is Test {
         vm.startPrank(alice);
         vm.expectRevert(); // TODO: reenable for test
         airdrop.withdraw(true, 0, invalidSignature);
-        console2.log(
-            "\x1B[35mAlice balance after:\x1B[0m",
-            token.balanceOf(alice) / 10 ** 18
-        );
-        console2.log(
-            "\x1B[35mContract balance after:\x1B[0m",
-            token.balanceOf(address(airdrop)) / 10 ** 18
-        );
+        console2.log("\x1B[35mAlice balance after:\x1B[0m", token.balanceOf(alice) / 10 ** 18);
+        console2.log("\x1B[35mContract balance after:\x1B[0m", token.balanceOf(address(airdrop)) / 10 ** 18);
         vm.stopPrank();
     }
 }
