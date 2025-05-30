@@ -12,8 +12,8 @@ contract DragonswapRevenueShareStaking is Ownable, StakedDragonswapToken {
     struct Stake {
         uint256 amount;
         uint256 unlockTimestamp;
-        // bool claimed;
     }
+    // bool claimed;
     //uint256 multiplier;
 
     /// @notice The address of the Dragonswap token
@@ -166,7 +166,6 @@ contract DragonswapRevenueShareStaking is Ownable, StakedDragonswapToken {
         isRewardToken[_rewardToken] = true;
         emit RewardTokenAdded(_rewardToken);
     }
-
 
     /**
      * @notice Remove a reward token
