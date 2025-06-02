@@ -6,6 +6,7 @@ import {Vm} from "forge-std/Vm.sol";
 
 import {AirdropFactory} from "../src/AirdropFactory.sol";
 import {Airdrop} from "../src/Airdrop.sol";
+import {Staker} from "../src/Staker.sol";
 
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
@@ -28,9 +29,15 @@ contract AirdropTest is Test {
 
         Vm.Wallet memory signer = vm.createWallet(vm.randomUint());
 
+        address[] memory rewardTokens = new address[](1);
+        rewardTokens[0] = address(2);
+
+        Staker staker = new Staker(address(1), address(token), 1_00, rewardTokens);
+
         uint256[] memory timestamps = new uint256[](0);
-        Airdrop instance =
-            Airdrop(airdropFactory.deploy(address(token), address(1), address(1), signer.addr, address(0), timestamps));
+        Airdrop instance = Airdrop(
+            airdropFactory.deploy(address(token), address(staker), address(1), signer.addr, address(0), timestamps)
+        );
 
         assertNotEq(address(instance), address(0));
         assertEq(address(instance), airdropFactory.getLatestDeployment());
@@ -42,7 +49,7 @@ contract AirdropTest is Test {
         token.approve(address(instance), type(uint256).max);
         uint256 depositAmount = 10_000e18;
         instance.deposit(depositAmount);
-        assertEq(depositAmount, instance.totalDeposited());
+        assertEq(depositAmount, instance.totalDepositedForDistribution());
 
         // Add timestamp
         instance.addTimestamp(block.timestamp + 10);
@@ -58,15 +65,16 @@ contract AirdropTest is Test {
         assertEq(amounts[0], instance.portions(0, accounts[0]));
 
         // Withdraw
+        bool toWallet = true;
         bytes32 hash =
-            keccak256(abi.encode(address(this), block.chainid, msg.sender, true, amounts[0])).toEthSignedMessageHash();
+            keccak256(abi.encode(address(instance), block.chainid, user, toWallet, amounts[0])).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signer, hash);
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.prank(user);
         vm.warp(block.timestamp + 11);
-        instance.withdraw(true, 0, signature);
-        uint256 penalty = amounts[0] * 50_00_00 / 1_00_00_00;
+        instance.withdraw(toWallet, false, signature);
+        uint256 penalty = amounts[0] * staker.fee() / 1_00_00;
         assertEq(token.balanceOf(user), amounts[0] - penalty);
-        assertEq(token.balanceOf(address(1)), penalty);
+        assertEq(token.balanceOf(address(staker)), penalty);
     }
 }

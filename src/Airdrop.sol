@@ -12,41 +12,45 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     using MessageHashUtils for bytes32;
     using SignatureChecker for address;
 
+    bool public isLocked;
+    address public token;
     address public staker;
     address public signer;
     address public treasury;
-    address public token;
-    uint256 public totalDeposited;
     uint256 public penaltyWallet;
     uint256 public penaltyStaker;
-    bool public lock;
+    uint256 public totalDepositedForDistribution;
+
     uint256[] public unlocks;
     mapping(uint256 portionId => mapping(address account => uint256 amount)) public portions;
 
-    uint256 public constant precision = 1_00_00_00;
+    uint256 public constant precision = 1_00_00;
     uint256 public constant cleanUpBuffer = 60 days;
 
     /// Events
     event Deposit(uint256 amount);
     event TimestampAdded(uint256 indexed index, uint256 timestamp);
     event Locked();
+    event CleanUp(address indexed account);
     event TimestampChanged(uint256 indexed index, uint256 newTimestamp);
     event WalletWithdrawal(address indexed account, uint256 total, uint256 penalty);
-    event StakerWithdrawal(address indexed account, uint256 total, uint256 penalty, uint256 indexed lockupIndex);
+    event StakerWithdrawal(address indexed account, uint256 total, bool indexed locking);
 
     /// Errors
     error CleanUpNotAvailable();
     error StakingUnavailableForThisAirdrop();
     error SettingsLocked();
+    error AlreadyLocked();
     error TotalZero();
     error ZeroAddress();
     error InvalidTimestamp();
     error ArrayLengthMismatch();
     error InvalidIndex();
+    error SignatureInvalid();
 
     /// @dev Disables addition of new portions, changing amounts and adding new unlock timestamps.
-    modifier locked() {
-        _lockCheck();
+    modifier lock() {
+        _isLocked();
         _;
     }
 
@@ -62,7 +66,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         address _treasury,
         address _signer,
         address initialOwner,
-        uint256[] memory timestamps
+        uint256[] calldata timestamps
     ) external initializer {
         // Initialize inheritance.
         __Ownable_init(initialOwner);
@@ -74,7 +78,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         signer = _signer;
         if (_treasury == address(0)) revert ZeroAddress();
         treasury = _treasury;
-        // Leaving this parameter unset will permanently disable the option the 'withdraw funds to staker contract' for this airdrop.
+        // Staker can be left unset initially
         staker = _staker;
 
         // Push timestamps
@@ -84,27 +88,18 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             if (timestamps[i] <= timestamps[i - 1]) revert InvalidTimestamp();
             unlocks.push(timestamps[i]);
         }
-        // Default value for wallet withdrawal penalty is be 50%.
-        penaltyWallet = 50_00_00;
-        // Default value for staker withdrawal penalty is be 0%.
     }
 
     /// @notice Function to lock the contract settings in place.
     /// @dev Once locked, settings cannot be changed and there is no way to unlock the contract.
     function lockUp() external onlyOwner {
-        lock = true;
+        if (isLocked) revert AlreadyLocked();
+        isLocked = true;
         emit Locked();
     }
 
-    /// @notice Function to change the penalty percentage, represented in pips.
-    function updatePenaltyValues(uint256 _penaltyWallet, uint256 _penaltyStaker) external onlyOwner locked {
-        if (_penaltyWallet > precision || _penaltyStaker > precision) revert();
-        penaltyWallet = _penaltyWallet;
-        penaltyStaker = _penaltyStaker;
-    }
-
     /// @notice Function to introduce a new timestamp to the unlocks array.
-    function addTimestamp(uint256 timestamp) external onlyOwner locked {
+    function addTimestamp(uint256 timestamp) external onlyOwner lock {
         // Gas opt.
         uint256 length = unlocks.length;
         // Ensure the new timestamp is in the future compared to the latest one.
@@ -132,7 +127,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     function assignPortions(uint256 index, address[] memory accounts, uint256[] memory amounts)
         external
         onlyOwner
-        locked
+        lock
     {
         // Gas opt.
         mapping(address => uint256) storage _portions = portions[index];
@@ -150,18 +145,17 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     function deposit(uint256 amount) external onlyOwner {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         unchecked {
-            totalDeposited += amount;
+            totalDepositedForDistribution += amount;
         }
         emit Deposit(amount);
     }
 
-    // TODO: Consider switching to percents in unlocks, and set one allocation per user (this might result in dust).
     /// @notice Function to withdraw the airdrop.
     /// @dev Callable by anyone eligible.
     /// @param toWallet describes if user wants to retrieves the airdrop directly to the owned EOA (includes penalty by default) or to the staker contract with a chosen lockup period (can include penalty but doesn't by default).
-    /// @param lockupIndex is an index of a lockup period. This argument is required only if user chooses 'withdrawal to staker' (`toWallet` == false) option when calling this function.
+    /// @param locking determines if user is locking tokens inside the staker contract or not.
     /// @param signature represents an extra layer of safety, a message of approval signed by `signer`.
-    function withdraw(bool toWallet, uint256 lockupIndex, bytes calldata signature) external {
+    function withdraw(bool toWallet, bool locking, bytes calldata signature) external {
         uint256 n = unlocks.length;
         uint256 total;
         for (uint256 i; i < n; ++i) {
@@ -176,28 +170,22 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         bytes32 hash =
             keccak256(abi.encode(address(this), block.chainid, msg.sender, toWallet, total)).toEthSignedMessageHash();
         // Ensure signature validity.
-        if (signer.isValidSignatureNow(hash, signature)) revert();
+        if (!signer.isValidSignatureNow(hash, signature)) revert SignatureInvalid();
         // Make the withdrawal, either to wallet or to the staker contract (if available for the present airdrop).
         if (toWallet) {
             // Compute penalty, transfer it to treasury and the rest to the user..
-            uint256 penaltyAmount = total * penaltyWallet / precision;
-            IERC20(token).transfer(msg.sender, total - penaltyAmount);
+            uint256 penaltyAmount = total * IStaker(staker).fee() / precision;
             if (penaltyAmount != 0) {
-                IERC20(token).transfer(treasury, penaltyAmount);
+                IERC20(token).transfer(address(staker), penaltyAmount);
                 total -= penaltyAmount;
             }
+            IERC20(token).transfer(msg.sender, total);
             emit WalletWithdrawal(msg.sender, total, penaltyAmount);
         } else {
             // Check if staker is set.
             if (staker == address(0)) revert StakingUnavailableForThisAirdrop();
-            // Forward funds to the staker, with information about the chosen lockup period.
-            uint256 penaltyAmount = total * penaltyStaker / precision;
-            if (penaltyAmount != 0) {
-                IERC20(token).transfer(treasury, penaltyAmount);
-                total -= penaltyAmount;
-            }
-            IStaker(staker).stake(msg.sender, total, lockupIndex);
-            emit StakerWithdrawal(msg.sender, total, penaltyAmount, lockupIndex);
+            IStaker(staker).stake(msg.sender, total, locking);
+            emit StakerWithdrawal(msg.sender, total, locking);
         }
     }
 
@@ -212,18 +200,20 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         uint256 total;
         for (uint256 i; i < n; ++i) {
             address account = accounts[i];
+            uint256 _total = total;
             for (uint256 j; j < _unlocks; ++j) {
                 // Sum up amounts and delete acquired portions.
                 total += portions[j][account];
                 delete portions[j][account];
             }
+            if (total > _total) emit CleanUp(account);
         }
         // Send tokens to treasury.
         IERC20(token).transfer(treasury, total);
     }
 
     /// @notice Function to revert once contract is locked.
-    function _lockCheck() private view {
-        if (lock) revert SettingsLocked();
+    function _isLocked() private view {
+        if (isLocked) revert SettingsLocked();
     }
 }
