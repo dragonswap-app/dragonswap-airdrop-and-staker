@@ -32,13 +32,13 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     event TimestampAdded(uint256 indexed index, uint256 timestamp);
     event Locked();
     event CleanUp(address indexed account);
+    event PortionsAssigned(address[] accounts, uint256[] amounts);
     event TimestampChanged(uint256 indexed index, uint256 newTimestamp);
     event WalletWithdrawal(address indexed account, uint256 total, uint256 penalty);
     event StakerWithdrawal(address indexed account, uint256 total, bool indexed locking);
 
     /// Errors
     error CleanUpNotAvailable();
-    error StakingUnavailableForThisAirdrop();
     error SettingsLocked();
     error AlreadyLocked();
     error TotalZero();
@@ -78,7 +78,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         signer = _signer;
         if (_treasury == address(0)) revert ZeroAddress();
         treasury = _treasury;
-        // Staker can be left unset initially
+        if (_staker == address(0)) revert ZeroAddress();
         staker = _staker;
 
         // Push timestamps
@@ -115,8 +115,8 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         // Ensure that the new timestamp value is lower than the next one and greater than the previous one (if they exist).
         if (index > unlocks.length - 1) revert InvalidIndex();
         if (
-            (index < unlocks.length - 2 && timestamp > unlocks[index + 1])
-                || (index > 0 && timestamp < unlocks[index - 1])
+            (index < unlocks.length - 1 && timestamp >= unlocks[index + 1])
+                || (index > 0 && timestamp <= unlocks[index - 1])
         ) revert InvalidTimestamp();
         // Assign the timestamp.
         unlocks[index] = timestamp;
@@ -138,6 +138,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             // Assign the account's portion for the index.
             _portions[accounts[i]] = amounts[i];
         }
+        emit PortionsAssigned(accounts, amounts);
     }
 
     /// @notice Function to deposit airdrop rewards.
@@ -171,7 +172,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             keccak256(abi.encode(address(this), block.chainid, msg.sender, toWallet, total)).toEthSignedMessageHash();
         // Ensure signature validity.
         if (!signer.isValidSignatureNow(hash, signature)) revert SignatureInvalid();
-        // Make the withdrawal, either to wallet or to the staker contract (if available for the present airdrop).
+        // Make the withdrawal, either to wallet or to the staker contract.
         if (toWallet) {
             // Compute penalty, transfer it to treasury and the rest to the user..
             uint256 penaltyAmount = total * IStaker(staker).fee() / precision;
@@ -182,8 +183,6 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             IERC20(token).transfer(msg.sender, total);
             emit WalletWithdrawal(msg.sender, total, penaltyAmount);
         } else {
-            // Check if staker is set.
-            if (staker == address(0)) revert StakingUnavailableForThisAirdrop();
             IStaker(staker).stake(msg.sender, total, locking);
             emit StakerWithdrawal(msg.sender, total, locking);
         }
