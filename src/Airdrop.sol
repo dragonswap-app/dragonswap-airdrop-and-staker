@@ -66,7 +66,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         address _treasury,
         address _signer,
         address initialOwner,
-        uint256[] calldata timestamps
+        uint256[] calldata _unlockTimestamps
     ) external initializer {
         // Initialize inheritance.
         __Ownable_init(initialOwner);
@@ -82,11 +82,11 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         staker = _staker;
 
         // Push timestamps
-        uint256 n = timestamps.length;
-        if (n != 0) unlocks.push(timestamps[0]);
+        uint256 n = _unlockTimestamps.length;
+        if (n != 0) unlocks.push(_unlockTimestamps[0]);
         for (uint256 i = 1; i < n; ++i) {
-            if (timestamps[i] <= timestamps[i - 1]) revert InvalidTimestamp();
-            unlocks.push(timestamps[i]);
+            if (_unlockTimestamps[i] <= _unlockTimestamps[i - 1]) revert InvalidTimestamp();
+            unlocks.push(_unlockTimestamps[i]);
         }
     }
 

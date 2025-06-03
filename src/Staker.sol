@@ -13,34 +13,36 @@ contract Staker is Ownable {
         bool claimed;
     }
 
-    /// @notice The address of the Dragonswap token
+    /// @notice Withdrawal fee for users which haven't locked
+    uint256 public fee;
     /// @notice Total amount of deposits
     uint256 public totalDeposits;
     /// @notice Array of tokens that users can be distributed as rewards to the stakers
     address[] public rewardTokens;
     /// @notice Mapping to check if a token is a reward token
-    mapping(address => bool) public isRewardToken;
+    mapping(address token => bool) public isRewardToken;
     /// @notice Last reward balance of `token`
-    mapping(address => uint256) public lastRewardBalance;
+    mapping(address token => uint256) public lastRewardBalance;
     /// @notice Accumulated `token` rewards per share, scaled to `P`
-    mapping(address => uint256) public accRewardsPerShare;
-
-    mapping(address => Stake[]) private stakes;
-    mapping(bytes32 => uint256) private rewardDebt;
-
-    uint256 public fee;
-    address public treasury;
-
+    mapping(address token => uint256) public accRewardsPerShare;
+    /// @notice Stakes of each account
+    mapping(address account => Stake[]) private stakes;
+    /// @notice Reward debt per token per user's stake
+    mapping(bytes32 stakeHash => uint256) private rewardDebt;
+    /// @notice Dragonswap token address
     IERC20 public immutable dragon;
+    /// @notice Lock period length in seconds
     uint256 public immutable lockTimespan;
-
-    uint256 private constant minimumDeposit = 100e18;
-    uint256 private constant stakeLimitPerUser = 100;
+    /// @notice Base of a `stakeHash` - used to retrieve `rewardDebt``
     bytes32 private immutable debtHashBase = keccak256(abi.encode(block.chainid, address(this)));
     /// @notice The precision of `accRewardsPerShare`
     uint256 private constant accPrecision = 1e18;
-    /// @notice The fee precision - bips;
+    /// @notice The fee precision - bips
     uint256 private constant feePrecision = 1_00_00;
+    /// @notice Minimum amount needed to make a deposit
+    uint256 private constant minimumDeposit = 100e18;
+    /// @notice Maximum amount of stakes allowed per user
+    uint256 private constant stakeLimitPerUser = 100;
 
     /// Events
     event Deposit(address indexed user, uint256 amount);
@@ -49,7 +51,7 @@ contract Staker is Ownable {
     event Payout(address indexed user, IERC20 indexed rewardToken, uint256 amount);
     event RewardTokenAdded(address indexed token);
     event RewardTokenRemoved(address indexed token);
-    event Unstuck(address indexed token, address indexed to, uint256 amount);
+    event Swept(address indexed token, address indexed to, uint256 amount);
     event FeeRedistributed(address indexed user, uint256 amount);
     event FeeSet(uint256 fee);
 
@@ -59,24 +61,23 @@ contract Staker is Ownable {
     error ZeroAddress();
     error AlreadyAdded();
     error AlreadyClaimed();
+    error InvalidStakeIndex();
     error NoBalance();
     error NotPresent();
     error AccountCrossingStakeLimit();
     error StakeLocked();
 
-    constructor(
-        address _owner,
-        address _dragon, /*address _airdropContract,*/
-        uint256 _fee,
-        address[] memory _rewardTokens
-    ) Ownable(_owner) {
+    constructor(address _owner, address _dragon, uint256 _fee, address[] memory _rewardTokens) Ownable(_owner) {
+        // Set the Dragonswap token
         if (_dragon == address(0)) revert InvalidAddress();
         dragon = IERC20(_dragon);
 
         // Optional
+        if (_fee > feePrecision * 9 / 10) revert();
         fee = _fee;
         emit FeeSet(_fee);
 
+        // Add reward tokens
         isRewardToken[_dragon] = true;
         rewardTokens.push(_dragon);
         emit RewardTokenAdded(_dragon);
@@ -90,6 +91,10 @@ contract Staker is Ownable {
         }
     }
 
+    /**
+     * @notice Function to change the withdrwal fee value.
+     * @param _fee New fee value to be set.
+     */
     function setFee(uint256 _fee) external onlyOwner {
         if (_fee > feePrecision * 9 / 10) revert();
         fee = _fee;
@@ -101,51 +106,61 @@ contract Staker is Ownable {
      * @param amount The amount of Dragon to deposit
      */
     function stake(address account, uint256 amount, bool locking) external {
-        //if (msg.sender != airdropContract) account = msg.sender;
         if (account == address(0)) revert ZeroAddress();
         if (amount < minimumDeposit) revert InvalidValue();
 
-        // calculate accumulation with total sDRG instead of drg
+        // Calculate accumulation with total sDRG instead of drg
         totalDeposits += amount;
 
-        uint256 numberOfStakesOwnedByAnAccount = stakes[account].length;
+        // Check stake limit
+        uint256 numberOfStakesOwnedByAnAccount = userStakeCount(account);
         if (numberOfStakesOwnedByAnAccount == stakeLimitPerUser) revert AccountCrossingStakeLimit();
 
+        // Gas opt
         uint256 numberOfRewardTokens = rewardTokens.length;
         for (uint256 i; i < numberOfRewardTokens; ++i) {
+            // Set reward debt
             address token = rewardTokens[i];
             _updateAccumulated(token);
 
-            uint256 _accRewardsPerShare = accRewardsPerShare[token];
             rewardDebt[computeDebtAccessHash(account, numberOfStakesOwnedByAnAccount, token)] =
-                (amount * _accRewardsPerShare) / accPrecision;
+                (amount * accRewardsPerShare[token]) / accPrecision;
         }
 
+        // Add the stake
         stakes[account].push(
             Stake({amount: amount, unlockTimestamp: locking ? block.timestamp + lockTimespan : 0, claimed: false})
         );
 
+        // Transfer tokens
         dragon.safeTransferFrom(msg.sender, address(this), amount);
-
         emit Deposit(msg.sender, amount);
     }
 
+    /**
+     * @notice Function to retrieve stake data for account.
+     * @dev Reward debts are returned in order of tokens present in the `rewardTokens` array
+     */
     function getAccountStakeData(address account, uint256 stakeIndex)
         external
         view
-        returns (uint256, uint256, uint256[] memory)
+        returns (uint256, uint256, uint256[] memory rewardDebts)
     {
+        if (stakeIndex >= userStakeCount(account)) revert InvalidStakeIndex();
         Stake memory _stake = stakes[account][stakeIndex];
         address[] memory _rewardTokens = rewardTokens;
 
-        uint256[] memory rewardDebts = new uint256[](_rewardTokens.length);
+        rewardDebts = new uint256[](_rewardTokens.length);
+        // Retrieve reward debts
         for (uint256 i; i < _rewardTokens.length; ++i) {
             rewardDebts[i] = rewardDebt[computeDebtAccessHash(account, stakeIndex, _rewardTokens[i])];
         }
-
         return (_stake.amount, _stake.unlockTimestamp, rewardDebts);
     }
 
+    /**
+     * @notice Function to compute the hash which helps access the rewardDebt for a certain user stake and token
+     */
     function computeDebtAccessHash(address account, uint256 stakeIndex, address rewardToken)
         public
         view
@@ -177,8 +192,7 @@ contract Staker is Ownable {
      */
     function addRewardToken(address _rewardToken) external onlyOwner {
         if (isRewardToken[_rewardToken] || accRewardsPerShare[_rewardToken] != 0) revert AlreadyAdded();
-        if (address(_rewardToken) == address(0)) revert InvalidAddress();
-
+        if (_rewardToken == address(0)) revert InvalidAddress();
         rewardTokens.push(_rewardToken);
         isRewardToken[_rewardToken] = true;
         emit RewardTokenAdded(_rewardToken);
@@ -225,8 +239,7 @@ contract Staker is Ownable {
     }
 
     function claimEarnings(uint256 stakeIndex) external {
-        if (stakeIndex >= userStakeCount(msg.sender)) revert();
-
+        if (stakeIndex >= userStakeCount(msg.sender)) revert InvalidStakeIndex();
         uint256 amount = stakes[msg.sender][stakeIndex].amount;
         uint256 numberOfRewardTokens = rewardTokens.length;
 
@@ -278,14 +291,14 @@ contract Staker is Ownable {
         totalDeposits -= amount;
         _stake.claimed = true;
 
-        if (_stake.unlockTimestamp != 0) {
+        // If user hasn't locked, penalty will be applied and redistributed to the active stakers.
+        if (_stake.unlockTimestamp == 0) {
             uint256 feeAmount = amount * fee / feePrecision;
             amount -= feeAmount;
             emit FeeRedistributed(msg.sender, feeAmount);
         }
 
         dragon.safeTransfer(msg.sender, amount);
-
         emit Withdraw(msg.sender, amount);
     }
 
@@ -298,14 +311,18 @@ contract Staker is Ownable {
         if (_stake.claimed) revert AlreadyClaimed();
         if (_stake.unlockTimestamp < block.timestamp) revert StakeLocked();
 
-        uint256 numberOfRewardTokens = rewardTokens.length;
-        for (uint256 i; i < numberOfRewardTokens; ++i) {
-            delete rewardDebt[computeDebtAccessHash(msg.sender, stakeIndex, rewardTokens[i])];
-        }
-        totalDeposits -= _stake.amount;
+        uint256 amount = _stake.amount;
+
+        totalDeposits -= amount;
         _stake.claimed = true;
 
-        dragon.safeTransfer(msg.sender, stakeIndex);
+        if (_stake.unlockTimestamp == 0) {
+            uint256 feeAmount = amount * fee / feePrecision;
+            amount -= feeAmount;
+            emit FeeRedistributed(msg.sender, feeAmount);
+        }
+
+        dragon.safeTransfer(msg.sender, amount);
         emit EmergencyWithdraw(msg.sender, stakeIndex);
     }
 
@@ -315,15 +332,17 @@ contract Staker is Ownable {
      * @param to The address that will receive `token` balance
      */
     function sweep(IERC20 token, address to) external onlyOwner {
-        if (isRewardToken[address(token)] || address(token) == address(dragon)) revert();
+        if (isRewardToken[address(token)]) revert();
 
         uint256 balance = token.balanceOf(address(this));
-
+        if (token == dragon) {
+            unchecked {
+                balance -= totalDeposits;
+            }
+        }
         if (balance == 0) revert();
-
         token.safeTransfer(to, balance);
-
-        emit Unstuck(address(token), to, balance);
+        emit Swept(address(token), to, balance);
     }
 
     /**
