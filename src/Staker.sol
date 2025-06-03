@@ -238,24 +238,31 @@ contract Staker is Ownable {
             - rewardDebt[computeDebtAccessHash(account, stakeIndex, token)];
     }
 
-    function claimEarnings(uint256 stakeIndex) external {
-        if (stakeIndex >= userStakeCount(msg.sender)) revert InvalidStakeIndex();
-        uint256 amount = stakes[msg.sender][stakeIndex].amount;
-        uint256 numberOfRewardTokens = rewardTokens.length;
+    function claimEarnings(uint256[] calldata stakeIndexes) external {
+        uint256 numberOfStakeIndexes = stakeIndexes.length;
+        uint256 stakeCount = userStakeCount(msg.sender);
+        Stake[] memory _stakes = stakes[msg.sender];
 
-        for (uint256 i; i < numberOfRewardTokens; ++i) {
-            address token = rewardTokens[i];
-            _updateAccumulated(token);
+        for (uint256 i; i < numberOfStakeIndexes; ++i) {
+            uint256 stakeIndex = stakeIndexes[i];
+            if (stakeIndex >= stakeCount) revert InvalidStakeIndex();
+            uint256 amount = _stakes[stakeIndex].amount;
+            uint256 numberOfRewardTokens = rewardTokens.length;
 
-            bytes32 rewardDebtHash = computeDebtAccessHash(msg.sender, stakeIndex, token);
+            for (uint256 j; j < numberOfRewardTokens; ++j) {
+                address token = rewardTokens[j];
+                _updateAccumulated(token);
 
-            uint256 _accRewardsPerShare = accRewardsPerShare[token];
-            uint256 accumulated = (amount * _accRewardsPerShare) / accPrecision;
-            uint256 pending = accumulated - rewardDebt[rewardDebtHash];
-            rewardDebt[rewardDebtHash] = accumulated;
+                bytes32 rewardDebtHash = computeDebtAccessHash(msg.sender, stakeIndex, token);
 
-            if (pending != 0) {
-                _payout(IERC20(token), pending);
+                uint256 _accRewardsPerShare = accRewardsPerShare[token];
+                uint256 accumulated = (amount * _accRewardsPerShare) / accPrecision;
+                uint256 pending = accumulated - rewardDebt[rewardDebtHash];
+                rewardDebt[rewardDebtHash] = accumulated;
+
+                if (pending != 0) {
+                    _payout(IERC20(token), pending);
+                }
             }
         }
     }
@@ -264,66 +271,82 @@ contract Staker is Ownable {
      * @notice Withdraw Dragon and harvest the rewards
      * @param amount The amount of Dragon to withdraw
      */
-    function withdraw(uint256 stakeIndex) external {
-        Stake storage _stake = stakes[msg.sender][stakeIndex];
+    function withdraw(uint256[] calldata stakeIndexes) external {
+        uint256 numberOfStakeIndexes = stakeIndexes.length;
+        uint256 stakeCount = userStakeCount(msg.sender);
+        Stake[] storage _stakes = stakes[msg.sender];
 
-        if (_stake.claimed) revert AlreadyClaimed();
-        if (_stake.unlockTimestamp < block.timestamp) revert StakeLocked();
+        for (uint256 i; i < numberOfStakeIndexes; ++i) {
+            uint256 stakeIndex = stakeIndexes[i];
+            if (stakeIndex >= stakeCount) revert InvalidStakeIndex();
+            Stake storage _stake = _stakes[stakeIndex];
 
-        uint256 amount = _stake.amount;
-        uint256 numberOfRewardTokens = rewardTokens.length;
+            if (_stake.claimed) revert AlreadyClaimed();
+            if (_stake.unlockTimestamp < block.timestamp) revert StakeLocked();
 
-        for (uint256 i; i < numberOfRewardTokens; ++i) {
-            address token = rewardTokens[i];
-            _updateAccumulated(token);
+            uint256 amount = _stake.amount;
+            uint256 numberOfRewardTokens = rewardTokens.length;
 
-            bytes32 rewardDebtHash = computeDebtAccessHash(msg.sender, stakeIndex, token);
+            for (uint256 j; j < numberOfRewardTokens; ++j) {
+                address token = rewardTokens[j];
+                _updateAccumulated(token);
 
-            uint256 _accRewardsPerShare = accRewardsPerShare[token];
-            uint256 pending = (amount * _accRewardsPerShare) / accPrecision - rewardDebt[rewardDebtHash];
-            delete rewardDebt[rewardDebtHash];
+                bytes32 rewardDebtHash = computeDebtAccessHash(msg.sender, stakeIndex, token);
 
-            if (pending != 0) {
-                _payout(IERC20(token), pending);
+                uint256 _accRewardsPerShare = accRewardsPerShare[token];
+                uint256 pending = (amount * _accRewardsPerShare) / accPrecision - rewardDebt[rewardDebtHash];
+                delete rewardDebt[rewardDebtHash];
+
+                if (pending != 0) {
+                    _payout(IERC20(token), pending);
+                }
             }
+
+            totalDeposits -= amount;
+            _stake.claimed = true;
+
+            // If user hasn't locked, penalty will be applied and redistributed to the active stakers.
+            if (_stake.unlockTimestamp == 0) {
+                uint256 feeAmount = amount * fee / feePrecision;
+                amount -= feeAmount;
+                emit FeeRedistributed(msg.sender, feeAmount);
+            }
+
+            dragon.safeTransfer(msg.sender, amount);
+            emit Withdraw(msg.sender, amount);
         }
-
-        totalDeposits -= amount;
-        _stake.claimed = true;
-
-        // If user hasn't locked, penalty will be applied and redistributed to the active stakers.
-        if (_stake.unlockTimestamp == 0) {
-            uint256 feeAmount = amount * fee / feePrecision;
-            amount -= feeAmount;
-            emit FeeRedistributed(msg.sender, feeAmount);
-        }
-
-        dragon.safeTransfer(msg.sender, amount);
-        emit Withdraw(msg.sender, amount);
     }
 
     /**
      * @notice Withdraw without caring about rewards. EMERGENCY ONLY
      */
-    function emergencyWithdraw(uint256 stakeIndex) external {
-        Stake storage _stake = stakes[msg.sender][stakeIndex];
+    function emergencyWithdraw(uint256[] calldata stakeIndexes) external {
+        uint256 numberOfStakeIndexes = stakeIndexes.length;
+        uint256 stakeCount = userStakeCount(msg.sender);
+        Stake[] storage _stakes = stakes[msg.sender];
 
-        if (_stake.claimed) revert AlreadyClaimed();
-        if (_stake.unlockTimestamp < block.timestamp) revert StakeLocked();
+        for (uint256 i; i < numberOfStakeIndexes; ++i) {
+            uint256 stakeIndex = stakeIndexes[i];
+            if (stakeIndex >= stakeCount) revert InvalidStakeIndex();
+            Stake storage _stake = _stakes[stakeIndex];
 
-        uint256 amount = _stake.amount;
+            if (_stake.claimed) revert AlreadyClaimed();
+            if (_stake.unlockTimestamp < block.timestamp) revert StakeLocked();
 
-        totalDeposits -= amount;
-        _stake.claimed = true;
+            uint256 amount = _stake.amount;
 
-        if (_stake.unlockTimestamp == 0) {
-            uint256 feeAmount = amount * fee / feePrecision;
-            amount -= feeAmount;
-            emit FeeRedistributed(msg.sender, feeAmount);
+            totalDeposits -= amount;
+            _stake.claimed = true;
+
+            if (_stake.unlockTimestamp == 0) {
+                uint256 feeAmount = amount * fee / feePrecision;
+                amount -= feeAmount;
+                emit FeeRedistributed(msg.sender, feeAmount);
+            }
+
+            dragon.safeTransfer(msg.sender, amount);
+            emit EmergencyWithdraw(msg.sender, stakeIndex);
         }
-
-        dragon.safeTransfer(msg.sender, amount);
-        emit EmergencyWithdraw(msg.sender, stakeIndex);
     }
 
     /**
