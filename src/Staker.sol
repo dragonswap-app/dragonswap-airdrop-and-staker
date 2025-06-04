@@ -138,54 +138,6 @@ contract Staker is Ownable {
     }
 
     /**
-     * @notice Function to retrieve stake data for account.
-     * @dev Reward debts are returned in order of tokens present in the `rewardTokens` array
-     */
-    function getAccountStakeData(address account, uint256 stakeIndex)
-        external
-        view
-        returns (uint256, uint256, uint256[] memory rewardDebts)
-    {
-        if (stakeIndex >= userStakeCount(account)) revert InvalidStakeIndex();
-        Stake memory _stake = stakes[account][stakeIndex];
-        address[] memory _rewardTokens = rewardTokens;
-
-        rewardDebts = new uint256[](_rewardTokens.length);
-        // Retrieve reward debts
-        for (uint256 i; i < _rewardTokens.length; ++i) {
-            rewardDebts[i] = rewardDebt[computeDebtAccessHash(account, stakeIndex, _rewardTokens[i])];
-        }
-        return (_stake.amount, _stake.unlockTimestamp, rewardDebts);
-    }
-
-    /**
-     * @notice Function to compute the hash which helps access the rewardDebt for a certain user stake and token
-     */
-    function computeDebtAccessHash(address account, uint256 stakeIndex, address rewardToken)
-        public
-        view
-        returns (bytes32)
-    {
-        return keccak256(abi.encodePacked(debtHashBase, account, stakeIndex, rewardToken));
-    }
-
-    /**
-     * @notice Get the number of account's stakes
-     * @return The length of the array
-     */
-    function userStakeCount(address account) public view returns (uint256) {
-        return stakes[account].length;
-    }
-
-    /**
-     * @notice Get the number of reward tokens
-     * @return The length of the array
-     */
-    function rewardTokensCounter() public view returns (uint256) {
-        return rewardTokens.length;
-    }
-
-    /**
      * @notice Add a reward token
      * @dev Cannot re-add reward tokens once removed
      * @param _rewardToken The address of the reward token
@@ -217,27 +169,10 @@ contract Staker is Ownable {
     }
 
     /**
-     * @notice View function to see pending reward token on frontend
-     * @param account The address of the user
-     * @param token The address of the token
-     * @return `_user`'s pending reward token
+     * Function to claim earnings from the selection of stakes.
+     * @param stakeIndexes is an array of stake indexes to claim earnings from
+     * @dev Updates accumulated rewards and reward debts
      */
-    function pendingRewards(address account, uint256 stakeIndex, address token) external view returns (uint256) {
-        if (!isRewardToken[token]) revert InvalidValue();
-        uint256 _totalDeposits = totalDeposits;
-        uint256 _accRewardTokenPerShare = accRewardsPerShare[token];
-
-        uint256 currRewardBalance = IERC20(token).balanceOf(address(this));
-        uint256 rewardBalance = token == address(dragon) ? currRewardBalance - _totalDeposits : currRewardBalance;
-
-        if (rewardBalance != lastRewardBalance[token] && _totalDeposits != 0) {
-            uint256 accruedReward = rewardBalance - lastRewardBalance[token];
-            _accRewardTokenPerShare += (accruedReward * accPrecision) / _totalDeposits;
-        }
-        return (stakes[account][stakeIndex].amount * _accRewardTokenPerShare) / accPrecision
-            - rewardDebt[computeDebtAccessHash(account, stakeIndex, token)];
-    }
-
     function claimEarnings(uint256[] calldata stakeIndexes) external {
         uint256 numberOfStakeIndexes = stakeIndexes.length;
         uint256 stakeCount = userStakeCount(msg.sender);
@@ -366,6 +301,76 @@ contract Staker is Ownable {
         if (balance == 0) revert();
         token.safeTransfer(to, balance);
         emit Swept(address(token), to, balance);
+    }
+
+    /**
+     * @notice View function to see pending reward token on frontend
+     * @param account The address of the user
+     * @param token The address of the token
+     * @return `_user`'s pending reward token
+     */
+    function pendingRewards(address account, uint256 stakeIndex, address token) external view returns (uint256) {
+        if (!isRewardToken[token]) revert InvalidValue();
+        uint256 _totalDeposits = totalDeposits;
+        uint256 _accRewardTokenPerShare = accRewardsPerShare[token];
+
+        uint256 currRewardBalance = IERC20(token).balanceOf(address(this));
+        uint256 rewardBalance = token == address(dragon) ? currRewardBalance - _totalDeposits : currRewardBalance;
+
+        if (rewardBalance != lastRewardBalance[token] && _totalDeposits != 0) {
+            uint256 accruedReward = rewardBalance - lastRewardBalance[token];
+            _accRewardTokenPerShare += (accruedReward * accPrecision) / _totalDeposits;
+        }
+        return (stakes[account][stakeIndex].amount * _accRewardTokenPerShare) / accPrecision
+            - rewardDebt[computeDebtAccessHash(account, stakeIndex, token)];
+    }
+
+    /**
+     * @notice Function to retrieve stake data for account.
+     * @dev Reward debts are returned in order of tokens present in the `rewardTokens` array
+     */
+    function getAccountStakeData(address account, uint256 stakeIndex)
+        external
+        view
+        returns (uint256, uint256, uint256[] memory rewardDebts)
+    {
+        if (stakeIndex >= userStakeCount(account)) revert InvalidStakeIndex();
+        Stake memory _stake = stakes[account][stakeIndex];
+        address[] memory _rewardTokens = rewardTokens;
+
+        rewardDebts = new uint256[](_rewardTokens.length);
+        // Retrieve reward debts
+        for (uint256 i; i < _rewardTokens.length; ++i) {
+            rewardDebts[i] = rewardDebt[computeDebtAccessHash(account, stakeIndex, _rewardTokens[i])];
+        }
+        return (_stake.amount, _stake.unlockTimestamp, rewardDebts);
+    }
+
+    /**
+     * @notice Function to compute the hash which helps access the rewardDebt for a certain user stake and token
+     */
+    function computeDebtAccessHash(address account, uint256 stakeIndex, address rewardToken)
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(debtHashBase, account, stakeIndex, rewardToken));
+    }
+
+    /**
+     * @notice Get the number of account's stakes
+     * @return The length of the array
+     */
+    function userStakeCount(address account) public view returns (uint256) {
+        return stakes[account].length;
+    }
+
+    /**
+     * @notice Get the number of reward tokens
+     * @return The length of the array
+     */
+    function rewardTokensCounter() public view returns (uint256) {
+        return rewardTokens.length;
     }
 
     /**
