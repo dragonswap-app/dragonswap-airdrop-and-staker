@@ -29,6 +29,7 @@ contract Staker is Ownable {
     mapping(address account => Stake[]) private stakes;
     /// @notice Reward debt per token per user's stake
     mapping(bytes32 stakeHash => uint256) private rewardDebt;
+
     /// @notice Dragonswap token address
     IERC20 public immutable dragon;
     /// @notice Lock period length in seconds
@@ -45,7 +46,7 @@ contract Staker is Ownable {
     uint256 private constant stakeLimitPerUser = 100;
 
     /// Events
-    event Deposit(address indexed user, uint256 amount);
+    event Deposit(address indexed sender, address indexed for, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
     event Payout(address indexed user, IERC20 indexed rewardToken, uint256 amount);
@@ -134,7 +135,8 @@ contract Staker is Ownable {
 
         // Transfer tokens
         dragon.safeTransferFrom(msg.sender, address(this), amount);
-        emit Deposit(msg.sender, amount);
+        // To who?
+        emit Deposit(msg.sender, account, amount);
     }
 
     /**
