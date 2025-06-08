@@ -183,6 +183,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             IERC20(token).transfer(msg.sender, total);
             emit WalletWithdrawal(msg.sender, total, penaltyAmount);
         } else {
+            IERC20(token).approve(staker, total);
             IStaker(staker).stake(msg.sender, total, locking);
             emit StakerWithdrawal(msg.sender, total, locking);
         }

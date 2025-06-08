@@ -46,7 +46,7 @@ contract Staker is Ownable {
     uint256 private constant stakeLimitPerUser = 100;
 
     /// Events
-    event Deposit(address indexed sender, address indexed for, uint256 amount);
+    event Deposit(address indexed funder, address indexed account, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
     event Payout(address indexed user, IERC20 indexed rewardToken, uint256 amount);
@@ -110,9 +110,6 @@ contract Staker is Ownable {
         if (account == address(0)) revert ZeroAddress();
         if (amount < minimumDeposit) revert InvalidValue();
 
-        // Calculate accumulation with total sDRG instead of drg
-        totalDeposits += amount;
-
         // Check stake limit
         uint256 numberOfStakesOwnedByAnAccount = userStakeCount(account);
         if (numberOfStakesOwnedByAnAccount == stakeLimitPerUser) revert AccountCrossingStakeLimit();
@@ -133,9 +130,12 @@ contract Staker is Ownable {
             Stake({amount: amount, unlockTimestamp: locking ? block.timestamp + lockTimespan : 0, claimed: false})
         );
 
+        // Calculate accumulation with total sDRG instead of drg
+        totalDeposits += amount;
+
         // Transfer tokens
         dragon.safeTransferFrom(msg.sender, address(this), amount);
-        // To who?
+
         emit Deposit(msg.sender, account, amount);
     }
 
@@ -340,9 +340,11 @@ contract Staker is Ownable {
         Stake memory _stake = stakes[account][stakeIndex];
         address[] memory _rewardTokens = rewardTokens;
 
-        rewardDebts = new uint256[](_rewardTokens.length);
+        uint256 _rewardTokensNumber = _rewardTokens.length;
+
+        rewardDebts = new uint256[](_rewardTokensNumber);
         // Retrieve reward debts
-        for (uint256 i; i < _rewardTokens.length; ++i) {
+        for (uint256 i; i < _rewardTokensNumber; ++i) {
             rewardDebts[i] = rewardDebt[computeDebtAccessHash(account, stakeIndex, _rewardTokens[i])];
         }
         return (_stake.amount, _stake.unlockTimestamp, rewardDebts);
