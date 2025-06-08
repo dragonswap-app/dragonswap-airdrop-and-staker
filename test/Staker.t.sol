@@ -47,6 +47,7 @@ contract StakerTest is Test {
 
         uint256 preClaimBalance = rewardToken.balanceOf(address(this));
         uint256[] memory stakeIndexes = new uint256[](1);
+        assertEq(staker.pendingRewards(address(this), 0, address(rewardToken)), rewardAmount);
         staker.claimEarnings(stakeIndexes);
         uint256 postClaimBalance = rewardToken.balanceOf(address(this));
         assertEq(preClaimBalance + rewardAmount, postClaimBalance);
