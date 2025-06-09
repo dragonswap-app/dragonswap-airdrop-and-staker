@@ -15,12 +15,28 @@ contract MockStaker is IStaker {
     mapping(address => StakeInfo[]) public stakes;
     mapping(address => uint256) public totalStaked;
 
+    address public token;
+    address public airdrop;
+
     event Staked(address indexed staker, uint256 amount, uint256 lockupIndex);
 
+    constructor() {}
+
+    // Set the token address that this staker will work with
+    function setToken(address _token) external {
+        token = _token;
+    }
+
+    // Set the airdrop address that is allowed to call stake
+    function setAirdrop(address _airdrop) external {
+        airdrop = _airdrop;
+    }
+
     function stake(address staker, uint256 amount, uint256 lockupIndex) external override {
-        /* Pull tokens from msg.sender (should be the Airdrop contract) */
-        IERC20 token = IERC20(msg.sender);
-        token.transferFrom(msg.sender, address(this), amount);
+        require(msg.sender == airdrop, "Only airdrop can call stake");
+
+        /* Pull tokens from the Airdrop contract */
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
 
         /* Record stake */
         stakes[staker].push(
