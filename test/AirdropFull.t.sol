@@ -4,9 +4,9 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {Airdrop} from "src/Airdrop.sol";
 import {AirdropFactory} from "src/AirdropFactory.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
 import {MockStaker} from "test/mocks/MockStaker.sol";
 import {LogUtils} from "test/utils/LogUtils.sol";
+import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {IStaker} from "src/interfaces/IStaker.sol";
 
@@ -30,7 +30,7 @@ contract AirdropUnitTest is Test {
     Airdrop public airdropImpl;
     AirdropFactory public factory;
     Airdrop public airdrop;
-    MockERC20 public token;
+    ERC20Mock public token;
     MockStaker public mockStaker;
 
     address public owner = makeAddr("owner");
@@ -46,7 +46,7 @@ contract AirdropUnitTest is Test {
         vm.startPrank(owner);
 
         LogUtils.logInfo("Instantiating a mock token");
-        token = new MockERC20("Test Token", "TEST");
+        token = new ERC20Mock();
 
         LogUtils.logInfo("Instantiating a mock staker");
         mockStaker = new MockStaker();
