@@ -42,8 +42,6 @@ contract Staker is Ownable {
     uint256 private constant feePrecision = 1_00_00;
     /// @notice Minimum amount needed to make a deposit
     uint256 private constant minimumDeposit = 100e18;
-    /// @notice Maximum amount of stakes allowed per user
-    uint256 private constant stakeLimitPerUser = 100;
 
     /// Events
     event Deposit(address indexed funder, address indexed account, uint256 amount);
@@ -110,12 +108,9 @@ contract Staker is Ownable {
         if (account == address(0)) revert ZeroAddress();
         if (amount < minimumDeposit) revert InvalidValue();
 
-        // Check stake limit
-        uint256 numberOfStakesOwnedByAnAccount = userStakeCount(account);
-        if (numberOfStakesOwnedByAnAccount == stakeLimitPerUser) revert AccountCrossingStakeLimit();
-
         // Gas opt
         uint256 numberOfRewardTokens = rewardTokens.length;
+        uint256 numberOfStakesOwnedByAnAccount = userStakeCount(account);
         for (uint256 i; i < numberOfRewardTokens; ++i) {
             // Set reward debt
             address token = rewardTokens[i];
