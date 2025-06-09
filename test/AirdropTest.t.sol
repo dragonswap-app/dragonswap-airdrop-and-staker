@@ -50,6 +50,8 @@ contract AirdropUnitTest is Test {
 
         LogUtils.logInfo("Instantiating a mock staker");
         mockStaker = new MockStaker();
+
+        mockStaker.setTreasury(treasury);
         mockStaker.setFee(DEFAULT_STAKER_FEE); // Set default fee
         mockStaker.setToken(address(token)); // Set token address
 
@@ -500,7 +502,7 @@ contract AirdropUnitTest is Test {
         LogUtils.logDebug("Asserting conditions");
         assertEq(token.balanceOf(alice), expectedReceived);
         // Penalty goes to staker contract, not treasury based on contract implementation
-        assertEq(token.balanceOf(address(mockStaker)), expectedPenalty);
+        assertEq(token.balanceOf(address(treasury)), expectedPenalty);
         assertEq(airdrop.portions(0, alice), 0);
     }
 

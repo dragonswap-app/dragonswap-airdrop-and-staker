@@ -6,6 +6,7 @@ import {IStaker} from "src/interfaces/IStaker.sol";
 
 contract MockStaker is IStaker {
     uint256 private _fee = 50_00; // Default 50% fee
+    address private _treasury;
     IERC20 public token;
 
     mapping(address => uint256) public stakes;
@@ -23,8 +24,16 @@ contract MockStaker is IStaker {
         _fee = newFee;
     }
 
+    function setTreasury(address _treasuryAddress) external {
+        _treasury = _treasuryAddress;
+    }
+
     function fee() external view override returns (uint256) {
         return _fee;
+    }
+
+    function treasury() external view override returns (address) {
+        return _treasury;
     }
 
     function stake(address account, uint256 amount, bool locking) external override {
