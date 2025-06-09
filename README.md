@@ -6,7 +6,7 @@ Consists of the Airdrop contract and Staker contract.
 Initial tokens will be released through the Airdrop contract, once unlocked they can be staked in order to generate earnings.
 
 ## Airdrop & Staker
-The `Airdrop` contract serves to distribute the initial portions of Dragonswap tokens.
+The `Airdrop` contract serves to safely distribute the portions of tokens.
 
 An `Airdrop` contract instance can distribute only a single token.
 
