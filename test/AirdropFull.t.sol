@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {Airdrop} from "src/Airdrop.sol";
 import {AirdropFactory} from "src/AirdropFactory.sol";
-import {MockStaker} from "test/mocks/MockStaker.sol";
+import {Staker} from "src/Staker.sol";
 import {LogUtils} from "test/utils/LogUtils.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
@@ -31,7 +31,7 @@ contract AirdropUnitTest is Test {
     AirdropFactory public factory;
     Airdrop public airdrop;
     ERC20Mock public token;
-    MockStaker public mockStaker;
+    Staker public staker;
 
     address public owner = makeAddr("owner");
     address public treasury = makeAddr("treasury");
@@ -49,11 +49,10 @@ contract AirdropUnitTest is Test {
         token = new ERC20Mock();
 
         LogUtils.logInfo("Instantiating a mock staker");
-        mockStaker = new MockStaker();
 
-        mockStaker.setTreasury(treasury);
-        mockStaker.setFee(DEFAULT_STAKER_FEE); // Set default fee
-        mockStaker.setToken(address(token)); // Set token address
+        address[] memory rewardTokens = new address[](1);
+        rewardTokens[0] = address(2);
+        staker = new Staker(owner, address(token), treasury, DEFAULT_STAKER_FEE, rewardTokens);
 
         LogUtils.logInfo("Instantiating an Airdrop implementation");
         airdropImpl = new Airdrop();
@@ -67,7 +66,7 @@ contract AirdropUnitTest is Test {
 
         LogUtils.logInfo("Initializing airdrop with following values:");
         LogUtils.logInfo(string.concat("token addr:\t\t", vm.toString(address(token))));
-        LogUtils.logInfo(string.concat("mock staker:\t", vm.toString(address(mockStaker))));
+        LogUtils.logInfo(string.concat("mock staker:\t", vm.toString(address(staker))));
         LogUtils.logInfo(string.concat("treasury addr:\t", vm.toString(treasury)));
         LogUtils.logInfo(string.concat("signer addr:\t", vm.toString(signer)));
         LogUtils.logInfo(string.concat("owner:\t\t", vm.toString(owner)));
@@ -75,7 +74,7 @@ contract AirdropUnitTest is Test {
         LogUtils.logInfo(string.concat("timestamp 2\t\t", vm.toString(timestamps[1])));
 
         LogUtils.logInfo("Factory deploying...");
-        address airdropAddr = factory.deploy(address(token), address(mockStaker), treasury, signer, owner, timestamps);
+        address airdropAddr = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
 
         LogUtils.logInfo("Setting airdrop to factory deploy address");
         airdrop = Airdrop(airdropAddr);
@@ -91,7 +90,7 @@ contract AirdropUnitTest is Test {
         assertEq(address(airdrop.token()), address(token));
         assertEq(airdrop.signer(), signer);
         assertEq(airdrop.treasury(), treasury);
-        assertEq(airdrop.staker(), address(mockStaker));
+        assertEq(airdrop.staker(), address(staker));
         assertEq(airdrop.owner(), owner);
         assertEq(airdrop.unlocks(0), timestamps[0]);
         assertEq(airdrop.unlocks(1), timestamps[1]);
@@ -130,7 +129,7 @@ contract AirdropUnitTest is Test {
         Airdrop newImpl = new Airdrop();
 
         /* Set new implementation */
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit();
         emit AirdropFactory.ImplementationSet(address(newImpl));
         factory.setImplementation(address(newImpl));
 
@@ -166,7 +165,7 @@ contract AirdropUnitTest is Test {
         assertFalse(airdrop.isLocked());
 
         /* Lock the contract */
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit();
         emit Airdrop.Locked();
         airdrop.lockUp();
 
@@ -228,7 +227,7 @@ contract AirdropUnitTest is Test {
         LogUtils.logDebug(string.concat("Initial airdrop balance: ", vm.toString(initialAirdropBalance)));
 
         /* Deposit */
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit();
         emit Airdrop.Deposit(depositAmount);
         airdrop.deposit(depositAmount);
 
@@ -266,7 +265,7 @@ contract AirdropUnitTest is Test {
         LogUtils.logDebug("Testing implementation cannot be initialized");
 
         vm.expectRevert();
-        airdropImpl.initialize(address(token), address(mockStaker), treasury, signer, owner, timestamps);
+        airdropImpl.initialize(address(token), address(staker), treasury, signer, owner, timestamps);
     }
 
     /* TEST: test_AddTimestamp - - - - - - - - - - - - - - - - - - - - - - - - -/
@@ -278,7 +277,7 @@ contract AirdropUnitTest is Test {
 
         uint256 newTimestamp = block.timestamp + 14 days;
 
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit();
         emit Airdrop.TimestampAdded(2, newTimestamp);
         airdrop.addTimestamp(newTimestamp);
 
@@ -330,7 +329,7 @@ contract AirdropUnitTest is Test {
         /* Change the first timestamp to be 2 days from now */
         uint256 newTimestamp = block.timestamp + 2 days;
 
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit();
         emit Airdrop.TimestampChanged(0, newTimestamp);
         airdrop.changeTimestamp(0, newTimestamp);
 
@@ -494,7 +493,7 @@ contract AirdropUnitTest is Test {
 
         vm.prank(alice);
         LogUtils.logDebug("Expecting emit");
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit();
         emit Airdrop.WalletWithdrawal(alice, expectedReceived, expectedPenalty);
         LogUtils.logDebug("Withdrawing funds");
         airdrop.withdraw(true, false, signature); // Updated to match function signature
@@ -531,14 +530,14 @@ contract AirdropUnitTest is Test {
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(alice);
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit();
         emit Airdrop.StakerWithdrawal(alice, ALICE_PORTION, true); // Updated event signature
         airdrop.withdraw(false, true, signature); // toWallet=false, locking=true
 
         // Verify portion was deleted
         assertEq(airdrop.portions(0, alice), 0);
         // Verify tokens went to staker
-        assertEq(token.balanceOf(address(mockStaker)), ALICE_PORTION);
+        assertEq(token.balanceOf(address(staker)), ALICE_PORTION);
     }
 
     /* TEST: test_Withdraw_RevertWhenTotalZero - - - - - - - - - - - - - - - - - /
@@ -683,7 +682,7 @@ contract AirdropUnitTest is Test {
         vm.expectRevert();
         factory.deploy(
             address(0), // Zero token address
-            address(mockStaker),
+            address(staker),
             treasury,
             signer,
             owner,
@@ -723,7 +722,7 @@ contract AirdropUnitTest is Test {
         vm.expectRevert();
         factory.deploy(
             address(token),
-            address(mockStaker),
+            address(staker),
             address(0), // Zero treasury address
             signer,
             owner,
@@ -743,7 +742,7 @@ contract AirdropUnitTest is Test {
         vm.expectRevert();
         factory.deploy(
             address(token),
-            address(mockStaker),
+            address(staker),
             treasury,
             address(0), // Zero signer address
             owner,
@@ -766,7 +765,7 @@ contract AirdropUnitTest is Test {
         invalidTimestamps[2] = block.timestamp + 14 days;
 
         vm.expectRevert();
-        factory.deploy(address(token), address(mockStaker), treasury, signer, owner, invalidTimestamps);
+        factory.deploy(address(token), address(staker), treasury, signer, owner, invalidTimestamps);
 
         vm.stopPrank();
     }
