@@ -45,7 +45,8 @@ contract Staker is Ownable {
     uint256 private constant minimumDeposit = 100e18;
 
     /// Events
-    event Deposit(address indexed funder, address indexed account, uint256 amount);
+    event Deposit(address indexed funder, address indexed account, uint256 amount, bool indexed locked);
+    event StakeLocked(address indexed user, uint256 stakeIndex);
     event Withdraw(address indexed user, uint256 stakeIndex, uint256 feeAmount);
     event EmergencyWithdraw(address indexed user, uint256 stakeIndex, uint256 feeAmount);
     event Payout(address indexed user, IERC20 indexed rewardToken, uint256 amount);
@@ -65,7 +66,7 @@ contract Staker is Ownable {
     error NoBalance();
     error NotPresent();
     error AccountCrossingStakeLimit();
-    error StakeLocked();
+    error StakeIsLocked();
 
     constructor(address _owner, address _dragon, address _treasury, uint256 _fee, address[] memory _rewardTokens)
         Ownable(_owner)
@@ -148,7 +149,15 @@ contract Staker is Ownable {
         // Transfer tokens
         dragon.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Deposit(msg.sender, account, amount);
+        emit Deposit(msg.sender, account, amount, locking);
+    }
+
+    function lockStake(uint256 stakeId) external {
+        if (stakeId >= userStakeCount(msg.sender)) revert InvalidValue();
+        Stake storage _stake = stakes[msg.sender][stakeId];
+        if (_stake.unlockTimestamp != 0) revert();
+        _stake.unlockTimestamp = block.timestamp + lockTimespan;
+        emit StakeLocked(msg.sender, stakeId);
     }
 
     /**
@@ -231,7 +240,7 @@ contract Staker is Ownable {
             Stake storage _stake = _stakes[stakeIndex];
 
             if (_stake.claimed) revert AlreadyClaimed();
-            if (_stake.unlockTimestamp < block.timestamp) revert StakeLocked();
+            if (_stake.unlockTimestamp < block.timestamp) revert StakeIsLocked();
 
             uint256 amount = _stake.amount;
             uint256 numberOfRewardTokens = rewardTokens.length;
@@ -280,7 +289,7 @@ contract Staker is Ownable {
             Stake storage _stake = _stakes[stakeIndex];
 
             if (_stake.claimed) revert AlreadyClaimed();
-            if (_stake.unlockTimestamp < block.timestamp) revert StakeLocked();
+            if (_stake.unlockTimestamp < block.timestamp) revert StakeIsLocked();
 
             uint256 amount = _stake.amount;
 
