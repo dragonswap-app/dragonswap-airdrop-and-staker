@@ -6,11 +6,11 @@ Consists of the Airdrop contract and Staker contract.
 Initial tokens will be released through the Airdrop contract, once unlocked they can be staked in order to generate earnings.
 
 ## Airdrop & Staker
-The `Airdrop` contract serves to distribute the initial portions of Dragonswap tokens.
+The `Airdrop` contract serves to safely distribute token portions.
 
-An `Airdrop` contract instance can distribute only a single token.
+An `Airdrop` contract instance can only distribute portions of a single token.
 
-The distribution is done by setting the unlock timestamps for waves of portions and depositing a sufficient amount of tokens (by the `Owner`).
+The distribution is done by setting the unlock timestamps for waves of portions and depositing a sufficient amount of tokens by the `Owner`.
 
 Unlock timestamps can be added and/or changed while the contract lock mechanism is inactive. Once locked, all settings except fee modification are frozen.
 
@@ -30,7 +30,7 @@ Withdrawal requires a signature from a protected wallet `Signer`, which provides
 
 Direct withdrawals (to the user's wallet) are subject to a penalty, which is adjustable on the `Staker` contract.
 
-Token amount taken as a penalty is directly distributed to the present accounts that are still staking. (Subject to a change.)
+Token amount taken as a penalty is directly transferred to treasury, with a purpose of further distribution to users.
 
 Staker contract is also able to receive stake tokens of external origin (outside of `Airdrop`, someone can buy tokens and stake them).
 

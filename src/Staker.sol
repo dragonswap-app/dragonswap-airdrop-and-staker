@@ -13,6 +13,7 @@ contract Staker is Ownable {
         bool claimed;
     }
 
+    address public treasury;
     /// @notice Withdrawal fee for users which haven't locked
     uint256 public fee;
     /// @notice Total amount of deposits
@@ -42,18 +43,16 @@ contract Staker is Ownable {
     uint256 private constant feePrecision = 1_00_00;
     /// @notice Minimum amount needed to make a deposit
     uint256 private constant minimumDeposit = 100e18;
-    /// @notice Maximum amount of stakes allowed per user
-    uint256 private constant stakeLimitPerUser = 100;
 
     /// Events
     event Deposit(address indexed funder, address indexed account, uint256 amount);
-    event Withdraw(address indexed user, uint256 amount);
-    event EmergencyWithdraw(address indexed user, uint256 amount);
+    event Withdraw(address indexed user, uint256 stakeIndex, uint256 feeAmount);
+    event EmergencyWithdraw(address indexed user, uint256 stakeIndex, uint256 feeAmount);
     event Payout(address indexed user, IERC20 indexed rewardToken, uint256 amount);
     event RewardTokenAdded(address indexed token);
     event RewardTokenRemoved(address indexed token);
     event Swept(address indexed token, address indexed to, uint256 amount);
-    event FeeRedistributed(address indexed user, uint256 amount);
+    event TreasurySet(address indexed treasury);
     event FeeSet(uint256 fee);
 
     /// Errors
@@ -68,10 +67,16 @@ contract Staker is Ownable {
     error AccountCrossingStakeLimit();
     error StakeLocked();
 
-    constructor(address _owner, address _dragon, uint256 _fee, address[] memory _rewardTokens) Ownable(_owner) {
+    constructor(address _owner, address _dragon, address _treasury, uint256 _fee, address[] memory _rewardTokens)
+        Ownable(_owner)
+    {
         // Set the Dragonswap token
         if (_dragon == address(0)) revert InvalidAddress();
         dragon = IERC20(_dragon);
+
+        if (_treasury == address(0)) revert InvalidAddress();
+        treasury = _treasury;
+        emit TreasurySet(_treasury);
 
         // Optional
         if (_fee > feePrecision * 9 / 10) revert();
@@ -93,11 +98,21 @@ contract Staker is Ownable {
     }
 
     /**
+     * @notice Function to change the treasury address.
+     * @param _treasury New treasury address to be set.
+     */
+    function setTreasury(address _treasury) external onlyOwner {
+        if (_treasury == address(0)) revert InvalidAddress();
+        treasury = _treasury;
+        emit TreasurySet(_treasury);
+    }
+
+    /**
      * @notice Function to change the withdrwal fee value.
      * @param _fee New fee value to be set.
      */
     function setFee(uint256 _fee) external onlyOwner {
-        if (_fee > feePrecision * 9 / 10) revert();
+        if (_fee > feePrecision * 9 / 10) revert InvalidValue();
         fee = _fee;
         emit FeeSet(_fee);
     }
@@ -110,12 +125,9 @@ contract Staker is Ownable {
         if (account == address(0)) revert ZeroAddress();
         if (amount < minimumDeposit) revert InvalidValue();
 
-        // Check stake limit
-        uint256 numberOfStakesOwnedByAnAccount = userStakeCount(account);
-        if (numberOfStakesOwnedByAnAccount == stakeLimitPerUser) revert AccountCrossingStakeLimit();
-
         // Gas opt
         uint256 numberOfRewardTokens = rewardTokens.length;
+        uint256 numberOfStakesOwnedByAnAccount = userStakeCount(account);
         for (uint256 i; i < numberOfRewardTokens; ++i) {
             // Set reward debt
             address token = rewardTokens[i];
@@ -243,14 +255,15 @@ contract Staker is Ownable {
             _stake.claimed = true;
 
             // If user hasn't locked, penalty will be applied and redistributed to the active stakers.
+            uint256 feeAmount;
             if (_stake.unlockTimestamp == 0) {
-                uint256 feeAmount = amount * fee / feePrecision;
+                feeAmount = amount * fee / feePrecision;
                 amount -= feeAmount;
-                emit FeeRedistributed(msg.sender, feeAmount);
+                dragon.safeTransfer(treasury, feeAmount);
             }
 
             dragon.safeTransfer(msg.sender, amount);
-            emit Withdraw(msg.sender, amount);
+            emit Withdraw(msg.sender, stakeIndex, feeAmount);
         }
     }
 
@@ -261,7 +274,6 @@ contract Staker is Ownable {
         uint256 numberOfStakeIndexes = stakeIndexes.length;
         uint256 stakeCount = userStakeCount(msg.sender);
         Stake[] storage _stakes = stakes[msg.sender];
-
         for (uint256 i; i < numberOfStakeIndexes; ++i) {
             uint256 stakeIndex = stakeIndexes[i];
             if (stakeIndex >= stakeCount) revert InvalidStakeIndex();
@@ -275,14 +287,15 @@ contract Staker is Ownable {
             totalDeposits -= amount;
             _stake.claimed = true;
 
+            uint256 feeAmount;
             if (_stake.unlockTimestamp == 0) {
-                uint256 feeAmount = amount * fee / feePrecision;
+                feeAmount = amount * fee / feePrecision;
                 amount -= feeAmount;
-                emit FeeRedistributed(msg.sender, feeAmount);
+                dragon.safeTransfer(treasury, feeAmount);
             }
 
             dragon.safeTransfer(msg.sender, amount);
-            emit EmergencyWithdraw(msg.sender, stakeIndex);
+            emit EmergencyWithdraw(msg.sender, stakeIndex, feeAmount);
         }
     }
 
