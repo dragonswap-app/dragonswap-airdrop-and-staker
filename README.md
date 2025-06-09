@@ -30,7 +30,7 @@ Withdrawal requires a signature from a protected wallet `Signer`, which provides
 
 Direct withdrawals (to the user's wallet) are subject to a penalty, which is adjustable on the `Staker` contract.
 
-Token amount taken as a penalty is directly distributed to the present accounts that are still staking. (Subject to a change.)
+Token amount taken as a penalty is directly transferred to treasury, with a purpose of further distribution to users.
 
 Staker contract is also able to receive stake tokens of external origin (outside of `Airdrop`, someone can buy tokens and stake them).
 

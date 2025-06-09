@@ -17,6 +17,8 @@ contract StakerTest is Test {
     ERC20Mock public rewardToken;
 
     address public constant OWNER = address(1);
+    address public constant TREASURY = address(2);
+
     uint256 public constant MINT_AMOUNT = 1_000_000e18;
 
     function setUp() public {
@@ -29,7 +31,7 @@ contract StakerTest is Test {
         address[] memory rewardTokens = new address[](1);
         rewardTokens[0] = address(rewardToken);
 
-        staker = new Staker(OWNER, address(stakingToken), 1_00, rewardTokens);
+        staker = new Staker(OWNER, address(stakingToken), TREASURY, 1_00, rewardTokens);
     }
 
     function test() external {

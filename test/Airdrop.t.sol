@@ -32,7 +32,7 @@ contract AirdropTest is Test {
         address[] memory rewardTokens = new address[](1);
         rewardTokens[0] = address(2);
 
-        Staker staker = new Staker(address(1), address(token), 1_00, rewardTokens);
+        Staker staker = new Staker(address(1), address(token), address(3), 1_00, rewardTokens);
 
         uint256[] memory timestamps = new uint256[](0);
         Airdrop instance = Airdrop(
@@ -56,7 +56,7 @@ contract AirdropTest is Test {
         assertGt(instance.unlocks(0), 0);
 
         // Assing portions
-        address user = address(2);
+        address user = address(4);
         address[] memory accounts = new address[](1);
         accounts[0] = user;
         uint256[] memory amounts = new uint256[](1);
@@ -75,6 +75,6 @@ contract AirdropTest is Test {
         instance.withdraw(toWallet, false, signature);
         uint256 penalty = amounts[0] * staker.fee() / 1_00_00;
         assertEq(token.balanceOf(user), amounts[0] - penalty);
-        assertEq(token.balanceOf(address(staker)), penalty);
+        assertEq(token.balanceOf(address(3)), penalty);
     }
 }

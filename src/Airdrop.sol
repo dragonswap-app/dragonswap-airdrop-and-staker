@@ -5,12 +5,13 @@ import {IStaker} from "./interfaces/IStaker.sol";
 
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Initializable, OwnableUpgradeable} from "@openzeppelin/u-contracts/access/OwnableUpgradeable.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Airdrop is Initializable, OwnableUpgradeable {
     using MessageHashUtils for bytes32;
     using SignatureChecker for address;
+    using SafeERC20 for IERC20;
 
     bool public isLocked;
     address public token;
@@ -144,7 +145,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     /// @notice Function to deposit airdrop rewards.
     /// @notice Callable by the contract owner.
     function deposit(uint256 amount) external onlyOwner {
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         unchecked {
             totalDepositedForDistribution += amount;
         }
@@ -177,10 +178,10 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             // Compute penalty, transfer it to treasury and the rest to the user..
             uint256 penaltyAmount = total * IStaker(staker).fee() / precision;
             if (penaltyAmount != 0) {
-                IERC20(token).transfer(address(staker), penaltyAmount);
+                IERC20(token).safeTransfer(IStaker(staker).treasury(), penaltyAmount);
                 total -= penaltyAmount;
             }
-            IERC20(token).transfer(msg.sender, total);
+            IERC20(token).safeTransfer(msg.sender, total);
             emit WalletWithdrawal(msg.sender, total, penaltyAmount);
         } else {
             IERC20(token).approve(staker, total);
@@ -209,7 +210,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             if (total > _total) emit CleanUp(account);
         }
         // Send tokens to treasury.
-        IERC20(token).transfer(treasury, total);
+        IERC20(token).safeTransfer(treasury, total);
     }
 
     /// @notice Function to revert once contract is locked.
