@@ -41,6 +41,9 @@ contract StakerTest is Test {
         stakingToken.approve(address(staker), stakeAmount);
         staker.stake(address(this), stakeAmount, true);
 
+        // The earliest possible time the stake can be withdrawn
+        vm.warp(block.timestamp + 30 days);
+
         assertEq(staker.pendingRewards(address(this), 0, address(rewardToken)), 0);
 
         rewardToken.transfer(address(staker), rewardAmount);
