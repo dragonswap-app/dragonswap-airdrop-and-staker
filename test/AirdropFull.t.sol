@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: MIT */
-pragma solidity 0.8.30;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {Airdrop} from "src/Airdrop.sol";
@@ -13,7 +13,6 @@ import {IStaker} from "src/interfaces/IStaker.sol";
 contract AirdropUnitTest is Test {
     using MessageHashUtils for bytes32;
 
-    /* WITHDRAWAL SPECIFIC VALUES */
     address public alice = address(0xA11CE);
     address public bob = address(0xB0B);
 
@@ -23,7 +22,6 @@ contract AirdropUnitTest is Test {
     uint256 public signerPrivateKey = 0x123456789;
     address public signer = vm.addr(signerPrivateKey);
 
-    // Updated to match contract precision
     uint256 constant PRECISION = 1_00_00;
     uint256 constant DEFAULT_STAKER_FEE = 50_00; // 50% fee from staker
 
@@ -768,5 +766,33 @@ contract AirdropUnitTest is Test {
         factory.deploy(address(token), address(staker), treasury, signer, owner, invalidTimestamps);
 
         vm.stopPrank();
+    }
+
+    function test_LockStake() external {
+        // Setup: Create a staker and make a stake
+        ERC20Mock token = new ERC20Mock();
+        token.mint(address(this), 1_000_000e18);
+
+        address[] memory rewardTokens = new address[](1);
+        rewardTokens[0] = address(2);
+        Staker staker = new Staker(address(this), address(token), address(1), 1_00, rewardTokens);
+
+        // Approve and create an unlocked stake
+        token.approve(address(staker), type(uint256).max);
+        staker.stake(address(this), 1000e18, false); // unlocked stake
+
+        // Verify stake is unlocked initially
+        (uint256 amount, uint256 unlockTimestamp,) = staker.getAccountStakeData(address(this), 0);
+        assertEq(unlockTimestamp, 0);
+        assertEq(amount, 1000e18);
+
+        // Lock the stake
+        vm.expectEmit(true, true, false, true);
+        emit Staker.StakeLocked(address(this), 0);
+        staker.lockStake(0);
+
+        // Verify stake is now locked
+        (, uint256 newUnlockTimestamp,) = staker.getAccountStakeData(address(this), 0);
+        assertGt(newUnlockTimestamp, block.timestamp);
     }
 }
