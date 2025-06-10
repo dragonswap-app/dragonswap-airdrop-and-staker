@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {Airdrop} from "src/Airdrop.sol";
@@ -10,7 +10,11 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {IStaker} from "src/interfaces/IStaker.sol";
 
-contract AirdropUnitTest is Test {
+/* TODO: Convert startPrank to prank where applicable */
+/* TODO: Check precision                              */
+/* TODO: Check signatures                             */
+/* TODO: Check reentrancy                             */
+contract AirdropFullTest is Test {
     using MessageHashUtils for bytes32;
 
     address public alice = address(0xA11CE);
@@ -93,7 +97,8 @@ contract AirdropUnitTest is Test {
         assertEq(airdrop.unlocks(0), timestamps[0]);
         assertEq(airdrop.unlocks(1), timestamps[1]);
         assertFalse(airdrop.isLocked());
-        // penaltyWallet and penaltyStaker are not initialized in the contract
+        /* NOTE: penaltyWallet and penaltyStaker are */
+        /* not initialized in the contract           */
         assertEq(airdrop.penaltyWallet(), 0);
         assertEq(airdrop.penaltyStaker(), 0);
     }
@@ -193,11 +198,11 @@ contract AirdropUnitTest is Test {
 
         vm.startPrank(owner);
 
-        // Lock once
+        /* Lock once */
         airdrop.lockUp();
         assertTrue(airdrop.isLocked());
 
-        // Try to lock again
+        /* Try to lock again */
         vm.expectRevert(Airdrop.AlreadyLocked.selector);
         airdrop.lockUp();
 
@@ -485,7 +490,7 @@ contract AirdropUnitTest is Test {
         LogUtils.logDebug("Acquiring signature");
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        // Updated penalty calculation based on contract implementation
+        /* Updated penalty calculation based on contract implementation */
         uint256 expectedPenalty = (ALICE_PORTION * DEFAULT_STAKER_FEE) / PRECISION;
         uint256 expectedReceived = ALICE_PORTION - expectedPenalty;
 
@@ -498,7 +503,7 @@ contract AirdropUnitTest is Test {
 
         LogUtils.logDebug("Asserting conditions");
         assertEq(token.balanceOf(alice), expectedReceived);
-        // Penalty goes to staker contract, not treasury based on contract implementation
+        /* Penalty goes to staker contract, not treasury based on contract implementation */
         assertEq(token.balanceOf(address(treasury)), expectedPenalty);
         assertEq(airdrop.portions(0, alice), 0);
     }
@@ -532,9 +537,9 @@ contract AirdropUnitTest is Test {
         emit Airdrop.StakerWithdrawal(alice, ALICE_PORTION, true); // Updated event signature
         airdrop.withdraw(false, true, signature); // toWallet=false, locking=true
 
-        // Verify portion was deleted
+        /* Verify portion was deleted */
         assertEq(airdrop.portions(0, alice), 0);
-        // Verify tokens went to staker
+        /* Verify tokens went to staker */
         assertEq(token.balanceOf(address(staker)), ALICE_PORTION);
     }
 
@@ -554,7 +559,7 @@ contract AirdropUnitTest is Test {
         airdrop.assignPortions(0, accounts, amounts);
         vm.stopPrank();
 
-        // Don't warp past unlock time, so no portions are available
+        /* Don't warp past unlock time, so no portions are available */
 
         bytes32 hash = keccak256(abi.encode(address(airdrop), block.chainid, alice, true, 0)).toEthSignedMessageHash();
 
@@ -584,7 +589,7 @@ contract AirdropUnitTest is Test {
 
         vm.warp(timestamps[0] + 1);
 
-        // Create invalid signature
+        /* Create invalid signature */
         bytes memory invalidSignature = abi.encodePacked(
             bytes32(0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef),
             bytes32(0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321),
