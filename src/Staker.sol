@@ -33,10 +33,10 @@ contract Staker is Ownable {
 
     /// @notice Dragonswap token address
     IERC20 public immutable dragon;
-    /// @notice Lock period length in seconds
-    uint256 public immutable lockTimespan;
     /// @notice Base of a `stakeHash` - used to retrieve `rewardDebt``
     bytes32 private immutable debtHashBase = keccak256(abi.encode(block.chainid, address(this)));
+    /// @notice Lock period length in seconds
+    uint256 public constant lockTimespan = 30 days;
     /// @notice The precision of `accRewardsPerShare`
     uint256 private constant accPrecision = 1e18;
     /// @notice The fee precision - bips
@@ -240,7 +240,7 @@ contract Staker is Ownable {
             Stake storage _stake = _stakes[stakeIndex];
 
             if (_stake.claimed) revert AlreadyClaimed();
-            if (_stake.unlockTimestamp < block.timestamp) revert StakeIsLocked();
+            if (_stake.unlockTimestamp > block.timestamp) revert StakeIsLocked();
 
             uint256 amount = _stake.amount;
             uint256 numberOfRewardTokens = rewardTokens.length;
@@ -289,7 +289,7 @@ contract Staker is Ownable {
             Stake storage _stake = _stakes[stakeIndex];
 
             if (_stake.claimed) revert AlreadyClaimed();
-            if (_stake.unlockTimestamp < block.timestamp) revert StakeIsLocked();
+            if (_stake.unlockTimestamp > block.timestamp) revert StakeIsLocked();
 
             uint256 amount = _stake.amount;
 
