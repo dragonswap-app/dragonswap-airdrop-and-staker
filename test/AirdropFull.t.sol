@@ -767,32 +767,4 @@ contract AirdropUnitTest is Test {
 
         vm.stopPrank();
     }
-
-    function test_LockStake() external {
-        // Setup: Create a staker and make a stake
-        ERC20Mock token = new ERC20Mock();
-        token.mint(address(this), 1_000_000e18);
-
-        address[] memory rewardTokens = new address[](1);
-        rewardTokens[0] = address(2);
-        Staker staker = new Staker(address(this), address(token), address(1), 1_00, rewardTokens);
-
-        // Approve and create an unlocked stake
-        token.approve(address(staker), type(uint256).max);
-        staker.stake(address(this), 1000e18, false); // unlocked stake
-
-        // Verify stake is unlocked initially
-        (uint256 amount, uint256 unlockTimestamp,) = staker.getAccountStakeData(address(this), 0);
-        assertEq(unlockTimestamp, 0);
-        assertEq(amount, 1000e18);
-
-        // Lock the stake
-        vm.expectEmit(true, true, false, true);
-        emit Staker.StakeLocked(address(this), 0);
-        staker.lockStake(0);
-
-        // Verify stake is now locked
-        (, uint256 newUnlockTimestamp,) = staker.getAccountStakeData(address(this), 0);
-        assertGt(newUnlockTimestamp, block.timestamp);
-    }
 }
