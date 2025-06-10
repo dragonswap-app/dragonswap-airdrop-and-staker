@@ -62,8 +62,10 @@ contract StakerFullTest is Test {
         assertEq(staker.fee(), STAKER_FEE);
 
         // Test reward tokens are properly indexed
-        assertEq(staker.rewardTokens(0), address(rewardToken1));
-        assertEq(staker.rewardTokens(1), address(rewardToken2));
+        // NOTE: The first token in the array is ALWAYS the staking token
+        assertEq(staker.rewardTokens(0), address(stakingToken));
+        assertEq(staker.rewardTokens(1), address(rewardToken1));
+        assertEq(staker.rewardTokens(2), address(rewardToken2));
     }
 
     function test_Initialization_RevertWhen_OwnerZeroAddress() public {
