@@ -6,6 +6,7 @@ import {Staker} from "src/Staker.sol";
 import {LogUtils} from "test/utils/LogUtils.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /* TODO: Convert startPrank to prank where applicable */
 /* TODO: Clean up the comments                        */
@@ -120,7 +121,7 @@ contract StakerFullTest is Test {
 
         address newTreasury = makeAddr("newTreasury");
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
         staker.setTreasury(newTreasury);
 
         vm.stopPrank();
@@ -644,9 +645,9 @@ contract StakerFullTest is Test {
         assertEq(nonRewardToken.balanceOf(address(staker)), 0);
     }
 
-    /* TEST: test_Sweep_stakingTokenToken_RevertWhenRewardToken - - - - - - - - - - - /
+    /* TEST: test_Sweep_StakingToken_RevertWhenRewardToken - - - - - - - - - - - /
      * Tests that stakingToken token cannot be swept as it's a reward token - - - - */
-    function test_Sweep_stakingTokenToken_RevertWhenRewardToken() public {
+    function test_Sweep_StakingToken_RevertWhenRewardToken() public {
         LogUtils.logDebug("Testing sweep stakingToken token reverts");
 
         // Alice stakes
