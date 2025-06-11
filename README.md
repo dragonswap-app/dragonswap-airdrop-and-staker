@@ -36,7 +36,7 @@ Staker contract is also able to receive stake tokens of external origin (outside
 
 Accounts can make deposits one for the other, but only the account which owns the stake can earn rewards and withdraw the stake.
 
-Stakes can be locked on deposit, but do not have to be.
+Stakes can be locked on deposit, but do not have to be, and it can be locked additionally (after the deposit).
 
 Withdrawal of a stake which was not previously locked will be a subject to the penalty (the same one as for the direct wallet withdrawal from the `Airdrop`).
 
