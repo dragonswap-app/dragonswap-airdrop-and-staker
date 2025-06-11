@@ -213,6 +213,11 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         IERC20(token).safeTransfer(treasury, total);
     }
 
+    /// @notice Function to get the amount of unlocks per account.
+    function unlocksCounter() external view returns (uint256) {
+        return unlocks.length;
+    }
+
     /// @notice Function to revert once contract is locked.
     function _isLocked() private view {
         if (isLocked) revert SettingsLocked();
