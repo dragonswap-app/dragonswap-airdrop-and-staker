@@ -80,7 +80,7 @@ contract Staker is Ownable {
         emit TreasurySet(_treasury);
 
         // Optional
-        if (_fee > feePrecision * 9 / 10) revert();
+        if (_fee > feePrecision * 9 / 10) revert InvalidValue();
         fee = _fee;
         emit FeeSet(_fee);
 
