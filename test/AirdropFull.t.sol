@@ -10,10 +10,7 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {IStaker} from "src/interfaces/IStaker.sol";
 
-/* TODO: Convert startPrank to prank where applicable */
-/* TODO: Check precision                              */
-/* TODO: Check signatures                             */
-/* TODO: Check reentrancy                             */
+/* NOTE: These tests do not check common attack vectors like signatures and reentrancy */
 contract AirdropFullTest is Test {
     using MessageHashUtils for bytes32;
 
@@ -44,9 +41,6 @@ contract AirdropFullTest is Test {
      * Pretend to be the owner address, create a mock token and an airdrop, - - /
      * set up two timestamps for dates, initialize the airdrop factory  - - - -*/
     function setUp() public {
-        LogUtils.logDebug("Starting prank as owner");
-        vm.startPrank(owner);
-
         LogUtils.logInfo("Instantiating a mock token");
         token = new ERC20Mock();
 
@@ -54,6 +48,7 @@ contract AirdropFullTest is Test {
 
         address[] memory rewardTokens = new address[](1);
         rewardTokens[0] = address(2);
+        vm.prank(owner);
         staker = new Staker(owner, address(token), treasury, DEFAULT_STAKER_FEE, rewardTokens);
 
         LogUtils.logInfo("Instantiating an Airdrop implementation");
@@ -76,13 +71,11 @@ contract AirdropFullTest is Test {
         LogUtils.logInfo(string.concat("timestamp 2\t\t", vm.toString(timestamps[1])));
 
         LogUtils.logInfo("Factory deploying...");
+        vm.prank(owner);
         address airdropAddr = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
 
         LogUtils.logInfo("Setting airdrop to factory deploy address");
         airdrop = Airdrop(airdropAddr);
-
-        LogUtils.logInfo("Stopping prank as owner");
-        vm.stopPrank();
     }
 
     /* TEST: test_Initialize - - - - - - - - - - - - - - - - - - - - - - - - - -/
@@ -126,20 +119,17 @@ contract AirdropFullTest is Test {
     function test_FactorySetImplementation() public {
         LogUtils.logDebug("Testing factory set implementation");
 
-        vm.startPrank(owner);
-
         /* Deploy new implementation */
         Airdrop newImpl = new Airdrop();
 
         /* Set new implementation */
         vm.expectEmit();
         emit AirdropFactory.ImplementationSet(address(newImpl));
+        vm.prank(owner);
         factory.setImplementation(address(newImpl));
 
         /* Verify implementation changed */
         assertEq(factory.implementation(), address(newImpl));
-
-        vm.stopPrank();
     }
 
     /* TEST: test_FactorySetImplementation_RevertWhenNotOwner - - - - - - - - - /
@@ -147,14 +137,11 @@ contract AirdropFullTest is Test {
     function test_FactorySetImplementation_RevertWhenNotOwner() public {
         LogUtils.logDebug("Testing factory set implementation revert when not owner");
 
-        vm.startPrank(alice);
-
         Airdrop newImpl = new Airdrop();
 
         vm.expectRevert();
+        vm.prank(alice);
         factory.setImplementation(address(newImpl));
-
-        vm.stopPrank();
     }
 
     /* TEST: test_LockUp - - - - - - - - - - - - - - - - - - - - - - - - - - - -/
@@ -162,20 +149,17 @@ contract AirdropFullTest is Test {
     function test_LockUp() public {
         LogUtils.logDebug("Testing lockUp functionality");
 
-        vm.startPrank(owner);
-
         /* Verify not locked initially */
         assertFalse(airdrop.isLocked());
 
         /* Lock the contract */
         vm.expectEmit();
         emit Airdrop.Locked();
+        vm.prank(owner);
         airdrop.lockUp();
 
         /* Verify locked - FIXED: should be assertTrue */
         assertTrue(airdrop.isLocked());
-
-        vm.stopPrank();
     }
 
     /* TEST: test_LockUp_RevertWhenNotOwner - - - - - - - - - - - - - - - - - - /
@@ -183,12 +167,9 @@ contract AirdropFullTest is Test {
     function test_LockUp_RevertWhenNotOwner() public {
         LogUtils.logDebug("Testing lockUp revert when not owner");
 
-        vm.startPrank(alice);
-
         vm.expectRevert();
+        vm.prank(alice);
         airdrop.lockUp();
-
-        vm.stopPrank();
     }
 
     /* TEST: test_LockUp_RevertWhenAlreadyLocked - - - - - - - - - - - - - - - - /
@@ -196,17 +177,15 @@ contract AirdropFullTest is Test {
     function test_LockUp_RevertWhenAlreadyLocked() public {
         LogUtils.logDebug("Testing lockUp revert when already locked");
 
-        vm.startPrank(owner);
-
         /* Lock once */
+        vm.prank(owner);
         airdrop.lockUp();
         assertTrue(airdrop.isLocked());
 
         /* Try to lock again */
         vm.expectRevert(Airdrop.AlreadyLocked.selector);
+        vm.prank(owner);
         airdrop.lockUp();
-
-        vm.stopPrank();
     }
 
     /* TEST: test_DepositOnly - - - - - - - - - - - - - - - - - - - - - - - - - /
@@ -214,14 +193,14 @@ contract AirdropFullTest is Test {
     function test_DepositOnly() public {
         LogUtils.logDebug("Testing deposit functionality");
 
-        vm.startPrank(owner);
-
         uint256 depositAmount = 1000 * 10 ** 18;
         LogUtils.logDebug("Minting tokens to owner: ");
 
+        vm.prank(owner);
         token.mint(owner, depositAmount);
 
         LogUtils.logDebug("Approving tokens");
+        vm.prank(owner);
         token.approve(address(airdrop), depositAmount);
 
         uint256 initialOwnerBalance = token.balanceOf(owner);
@@ -232,6 +211,7 @@ contract AirdropFullTest is Test {
         /* Deposit */
         vm.expectEmit();
         emit Airdrop.Deposit(depositAmount);
+        vm.prank(owner);
         airdrop.deposit(depositAmount);
 
         LogUtils.logDebug(
@@ -241,8 +221,6 @@ contract AirdropFullTest is Test {
         assertEq(token.balanceOf(owner), initialOwnerBalance - depositAmount);
         assertEq(token.balanceOf(address(airdrop)), initialAirdropBalance + depositAmount);
         assertEq(airdrop.totalDepositedForDistribution(), depositAmount);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Deposit_RevertWhenNotOwner - - - - - - - - - - - - - - - - - -/
@@ -250,16 +228,14 @@ contract AirdropFullTest is Test {
     function test_Deposit_RevertWhenNotOwner() public {
         LogUtils.logDebug("Testing deposit revert when not owner");
 
-        vm.startPrank(alice);
-
         uint256 depositAmount = 1000 * 10 ** 18;
         token.mint(alice, depositAmount);
+        vm.prank(alice);
         token.approve(address(airdrop), depositAmount);
 
         vm.expectRevert();
+        vm.prank(alice);
         airdrop.deposit(depositAmount);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_ImplementationCannotBeInitialized - - - - - - - - - - - - - - /
@@ -276,17 +252,14 @@ contract AirdropFullTest is Test {
     function test_AddTimestamp() public {
         LogUtils.logDebug("Testing add timestamp");
 
-        vm.startPrank(owner);
-
         uint256 newTimestamp = block.timestamp + 14 days;
 
         vm.expectEmit();
         emit Airdrop.TimestampAdded(2, newTimestamp);
+        vm.prank(owner);
         airdrop.addTimestamp(newTimestamp);
 
         assertEq(airdrop.unlocks(2), newTimestamp);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_AddTimestamp_RevertWhenNotFuture - - - - - - - - - - - - - - -/
@@ -294,15 +267,12 @@ contract AirdropFullTest is Test {
     function test_AddTimestamp_RevertWhenNotFuture() public {
         LogUtils.logDebug("Testing add timestamp revert when not future");
 
-        vm.startPrank(owner);
-
         /* Try to add timestamp that's before the last one */
         uint256 invalidTimestamp = timestamps[1] - 1;
 
         vm.expectRevert(Airdrop.InvalidTimestamp.selector);
+        vm.prank(owner);
         airdrop.addTimestamp(invalidTimestamp);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_AddTimestamp_RevertWhenLocked - - - - - - - - - - - - - - - - /
@@ -310,16 +280,14 @@ contract AirdropFullTest is Test {
     function test_AddTimestamp_RevertWhenLocked() public {
         LogUtils.logDebug("Testing add timestamp revert when locked");
 
-        vm.startPrank(owner);
-
+        vm.prank(owner);
         airdrop.lockUp();
 
         uint256 newTimestamp = block.timestamp + 14 days;
 
         vm.expectRevert(Airdrop.SettingsLocked.selector);
+        vm.prank(owner);
         airdrop.addTimestamp(newTimestamp);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_ChangeTimestamp - - - - - - - - - - - - - - - - - - - - - - - /
@@ -327,18 +295,15 @@ contract AirdropFullTest is Test {
     function test_ChangeTimestamp() public {
         LogUtils.logDebug("Testing change timestamp");
 
-        vm.startPrank(owner);
-
         /* Change the first timestamp to be 2 days from now */
         uint256 newTimestamp = block.timestamp + 2 days;
 
         vm.expectEmit();
         emit Airdrop.TimestampChanged(0, newTimestamp);
+        vm.prank(owner);
         airdrop.changeTimestamp(0, newTimestamp);
 
         assertEq(airdrop.unlocks(0), newTimestamp);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_ChangeTimestamp_RevertWhenInvalidIndex - - - - - - - - - - - -/
@@ -346,14 +311,11 @@ contract AirdropFullTest is Test {
     function test_ChangeTimestamp_RevertWhenInvalidIndex() public {
         LogUtils.logDebug("Testing change timestamp revert when invalid index");
 
-        vm.startPrank(owner);
-
         uint256 newTimestamp = block.timestamp + 10 days;
 
         vm.expectRevert(Airdrop.InvalidIndex.selector);
+        vm.prank(owner);
         airdrop.changeTimestamp(5, newTimestamp); /* Index doesn't exist */
-
-        vm.stopPrank();
     }
 
     /* TEST: test_ChangeTimestamp_RevertWhenInvalidOrder - - - - - - - - - - - -/
@@ -361,34 +323,31 @@ contract AirdropFullTest is Test {
     function test_ChangeTimestamp_RevertWhenInvalidOrder() public {
         LogUtils.logDebug("Testing change timestamp revert when invalid order");
 
-        vm.startPrank(owner);
-
         /* Try to set first timestamp after the second one */
         uint256 invalidTimestamp = timestamps[1] + 1 days;
         LogUtils.logDebug(string.concat("invalidTimestamp is ", vm.toString(invalidTimestamp)));
 
         vm.expectRevert(Airdrop.InvalidTimestamp.selector);
+        vm.prank(owner);
         airdrop.changeTimestamp(0, invalidTimestamp);
 
         /* Add a third timestamp */
         uint256 thirdTimestamp = block.timestamp + 14 days;
+        vm.prank(owner);
         airdrop.addTimestamp(thirdTimestamp);
 
         /* Try to set middle timestamp before first one */
         invalidTimestamp = timestamps[0] - 1 days;
 
         vm.expectRevert(Airdrop.InvalidTimestamp.selector);
+        vm.prank(owner);
         airdrop.changeTimestamp(1, invalidTimestamp);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_AssignPortions - - - - - - - - - - - - - - - - - - - - - - - -/
      * Tests assigning portions to users - - - - - - - - - - - - - - - - - - - */
     function test_AssignPortions() public {
         LogUtils.logDebug("Testing assign portions");
-
-        vm.startPrank(owner);
 
         address[] memory accounts = new address[](2);
         accounts[0] = alice;
@@ -399,6 +358,7 @@ contract AirdropFullTest is Test {
         amounts[1] = BOB_PORTION;
 
         /* Assign portions for first unlock */
+        vm.prank(owner);
         airdrop.assignPortions(0, accounts, amounts);
 
         assertEq(airdrop.portions(0, alice), amounts[0]);
@@ -408,20 +368,17 @@ contract AirdropFullTest is Test {
         amounts[0] = ALICE_PORTION;
         amounts[1] = BOB_PORTION;
 
+        vm.prank(owner);
         airdrop.assignPortions(1, accounts, amounts);
 
         assertEq(airdrop.portions(1, alice), amounts[0]);
         assertEq(airdrop.portions(1, bob), amounts[1]);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_AssignPortions_RevertWhenArrayMismatch - - - - - - - - - - - -/
      * Tests that array lengths must match - - - - - - - - - - - - - - - - - - */
     function test_AssignPortions_RevertWhenArrayMismatch() public {
         LogUtils.logDebug("Testing assign portions revert when array mismatch");
-
-        vm.startPrank(owner);
 
         address[] memory accounts = new address[](2);
         accounts[0] = alice;
@@ -431,9 +388,8 @@ contract AirdropFullTest is Test {
         amounts[0] = 100 * 10 ** 18;
 
         vm.expectRevert(Airdrop.ArrayLengthMismatch.selector);
+        vm.prank(owner);
         airdrop.assignPortions(0, accounts, amounts);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_AssignPortions_RevertWhenLocked - - - - - - - - - - - - - - - /
@@ -441,8 +397,7 @@ contract AirdropFullTest is Test {
     function test_AssignPortions_RevertWhenLocked() public {
         LogUtils.logDebug("Testing assign portions revert when locked");
 
-        vm.startPrank(owner);
-
+        vm.prank(owner);
         airdrop.lockUp();
 
         address[] memory accounts = new address[](1);
@@ -452,9 +407,8 @@ contract AirdropFullTest is Test {
         amounts[0] = ALICE_PORTION;
 
         vm.expectRevert(Airdrop.SettingsLocked.selector);
+        vm.prank(owner);
         airdrop.assignPortions(0, accounts, amounts);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Withdraw_ToWallet_Success - - - - - - - - - - - - - - - - - - /
@@ -462,7 +416,6 @@ contract AirdropFullTest is Test {
     function test_Withdraw_ToWallet_Success() public {
         LogUtils.logDebug("Testing withdraw to wallet success");
 
-        vm.startPrank(owner);
         address[] memory accounts = new address[](2);
         accounts[0] = alice;
         accounts[1] = bob;
@@ -475,8 +428,8 @@ contract AirdropFullTest is Test {
         token.mint(address(airdrop), amounts[0] + amounts[1]);
 
         LogUtils.logDebug("Assigning portions");
+        vm.prank(owner);
         airdrop.assignPortions(0, accounts, amounts);
-        vm.stopPrank();
 
         vm.warp(timestamps[0] + 1);
 
@@ -494,6 +447,9 @@ contract AirdropFullTest is Test {
         uint256 expectedPenalty = (ALICE_PORTION * DEFAULT_STAKER_FEE) / PRECISION;
         uint256 expectedReceived = ALICE_PORTION - expectedPenalty;
 
+        uint256 treasuryBalanceBefore = token.balanceOf(treasury);
+        uint256 aliceBalanceBefore = token.balanceOf(alice);
+
         vm.prank(alice);
         LogUtils.logDebug("Expecting emit");
         vm.expectEmit();
@@ -502,9 +458,9 @@ contract AirdropFullTest is Test {
         airdrop.withdraw(true, false, signature); // Updated to match function signature
 
         LogUtils.logDebug("Asserting conditions");
-        assertEq(token.balanceOf(alice), expectedReceived);
+        assertEq(token.balanceOf(alice), aliceBalanceBefore + expectedReceived);
         /* Penalty goes to staker contract, not treasury based on contract implementation */
-        assertEq(token.balanceOf(address(treasury)), expectedPenalty);
+        assertEq(token.balanceOf(address(treasury)), treasuryBalanceBefore + expectedPenalty);
         assertEq(airdrop.portions(0, alice), 0);
     }
 
@@ -513,7 +469,6 @@ contract AirdropFullTest is Test {
     function test_Withdraw_ToStaker_Success() public {
         LogUtils.logDebug("Testing withdraw to staker success");
 
-        vm.startPrank(owner);
         address[] memory accounts = new address[](1);
         accounts[0] = alice;
 
@@ -521,8 +476,8 @@ contract AirdropFullTest is Test {
         amounts[0] = ALICE_PORTION;
 
         token.mint(address(airdrop), ALICE_PORTION);
+        vm.prank(owner);
         airdrop.assignPortions(0, accounts, amounts);
-        vm.stopPrank();
 
         vm.warp(timestamps[0] + 1);
 
@@ -548,7 +503,6 @@ contract AirdropFullTest is Test {
     function test_Withdraw_RevertWhenTotalZero() public {
         LogUtils.logDebug("Testing withdraw revert when total is zero");
 
-        vm.startPrank(owner);
         address[] memory accounts = new address[](1);
         accounts[0] = alice;
 
@@ -556,8 +510,8 @@ contract AirdropFullTest is Test {
         amounts[0] = ALICE_PORTION;
 
         token.mint(address(airdrop), ALICE_PORTION);
+        vm.prank(owner);
         airdrop.assignPortions(0, accounts, amounts);
-        vm.stopPrank();
 
         /* Don't warp past unlock time, so no portions are available */
 
@@ -576,7 +530,6 @@ contract AirdropFullTest is Test {
     function test_Withdraw_RevertWhenSignatureInvalid() public {
         LogUtils.logDebug("Testing withdraw revert when signature is invalid");
 
-        vm.startPrank(owner);
         address[] memory accounts = new address[](1);
         accounts[0] = alice;
 
@@ -584,8 +537,8 @@ contract AirdropFullTest is Test {
         amounts[0] = ALICE_PORTION;
 
         token.mint(address(airdrop), ALICE_PORTION);
+        vm.prank(owner);
         airdrop.assignPortions(0, accounts, amounts);
-        vm.stopPrank();
 
         vm.warp(timestamps[0] + 1);
 
@@ -606,7 +559,6 @@ contract AirdropFullTest is Test {
     function test_cleanUpUnclaimedPortions() public {
         LogUtils.logDebug("Testing cleanup of unclaimed portions");
 
-        vm.startPrank(owner);
         address[] memory accounts = new address[](2);
         accounts[0] = alice;
         accounts[1] = bob;
@@ -619,6 +571,7 @@ contract AirdropFullTest is Test {
         token.mint(address(airdrop), amounts[0] + amounts[1]);
 
         LogUtils.logDebug("Assigning portions");
+        vm.prank(owner);
         airdrop.assignPortions(0, accounts, amounts);
 
         LogUtils.logDebug(string.concat("Current block time: ", vm.toString(block.timestamp)));
@@ -633,6 +586,7 @@ contract AirdropFullTest is Test {
         uint256 initialTreasuryTokenBalance = token.balanceOf(treasury);
         LogUtils.logDebug(string.concat("Current treasury token balance: ", vm.toString(initialTreasuryTokenBalance)));
 
+        vm.prank(owner);
         airdrop.cleanUp(addressesToCleanup);
 
         uint256 finalTreasuryTokenBalance = token.balanceOf(treasury);
@@ -645,16 +599,12 @@ contract AirdropFullTest is Test {
 
         /* Verify tokens were transferred to treasury */
         assertEq(finalTreasuryTokenBalance, initialTreasuryTokenBalance + ALICE_PORTION);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_CleanUp_RevertWhenNotAvailable - - - - - - - - - - - - - - - - /
     * Tests that cleanup reverts when called before the cleanup period expires - */
     function test_CleanUp_RevertWhenNotAvailable() public {
         LogUtils.logDebug("Testing cleanup revert when cleanup period hasn't expired");
-
-        vm.startPrank(owner);
 
         address[] memory accounts = new address[](1);
         accounts[0] = alice;
@@ -663,6 +613,7 @@ contract AirdropFullTest is Test {
         amounts[0] = ALICE_PORTION;
 
         token.mint(address(airdrop), ALICE_PORTION);
+        vm.prank(owner);
         airdrop.assignPortions(0, accounts, amounts);
 
         address[] memory addressesToCleanup = new address[](1);
@@ -670,9 +621,8 @@ contract AirdropFullTest is Test {
 
         // Try cleanup before period expires
         vm.expectRevert(Airdrop.CleanUpNotAvailable.selector);
+        vm.prank(owner);
         airdrop.cleanUp(addressesToCleanup);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Initialize_RevertWhenTokenZeroAddress - - - - - - - - - - - - /
@@ -680,9 +630,8 @@ contract AirdropFullTest is Test {
     function test_Initialize_RevertWhenTokenZeroAddress() public {
         LogUtils.logDebug("Testing initialize revert when token is zero address");
 
-        vm.startPrank(owner);
-
         vm.expectRevert();
+        vm.prank(owner);
         factory.deploy(
             address(0), // Zero token address
             address(staker),
@@ -691,8 +640,6 @@ contract AirdropFullTest is Test {
             owner,
             timestamps
         );
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Initialize_RevertWhenStakerZeroAddress - - - - - - - - - - - - /
@@ -700,9 +647,8 @@ contract AirdropFullTest is Test {
     function test_Initialize_RevertWhenStakerZeroAddress() public {
         LogUtils.logDebug("Testing initialize revert when staker is zero address");
 
-        vm.startPrank(owner);
-
         vm.expectRevert();
+        vm.prank(owner);
         factory.deploy(
             address(token),
             address(0), // Zero staker address
@@ -711,8 +657,6 @@ contract AirdropFullTest is Test {
             owner,
             timestamps
         );
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Initialize_RevertWhenTreasuryZeroAddress - - - - - - - - - - - /
@@ -720,9 +664,8 @@ contract AirdropFullTest is Test {
     function test_Initialize_RevertWhenTreasuryZeroAddress() public {
         LogUtils.logDebug("Testing initialize revert when treasury is zero address");
 
-        vm.startPrank(owner);
-
         vm.expectRevert();
+        vm.prank(owner);
         factory.deploy(
             address(token),
             address(staker),
@@ -731,8 +674,6 @@ contract AirdropFullTest is Test {
             owner,
             timestamps
         );
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Initialize_RevertWhenSignerZeroAddress - - - - - - - - - - - - /
@@ -740,9 +681,8 @@ contract AirdropFullTest is Test {
     function test_Initialize_RevertWhenSignerZeroAddress() public {
         LogUtils.logDebug("Testing initialize revert when signer is zero address");
 
-        vm.startPrank(owner);
-
         vm.expectRevert();
+        vm.prank(owner);
         factory.deploy(
             address(token),
             address(staker),
@@ -751,8 +691,6 @@ contract AirdropFullTest is Test {
             owner,
             timestamps
         );
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Initialize_RevertWhenInvalidTimestampOrder - - - - - - - - - - /
@@ -760,16 +698,13 @@ contract AirdropFullTest is Test {
     function test_Initialize_RevertWhenInvalidTimestampOrder() public {
         LogUtils.logDebug("Testing initialize revert when timestamps not in order");
 
-        vm.startPrank(owner);
-
         uint256[] memory invalidTimestamps = new uint256[](3);
         invalidTimestamps[0] = block.timestamp + 7 days;
         invalidTimestamps[1] = block.timestamp + 1 days; // Invalid: earlier than previous
         invalidTimestamps[2] = block.timestamp + 14 days;
 
         vm.expectRevert();
+        vm.prank(owner);
         factory.deploy(address(token), address(staker), treasury, signer, owner, invalidTimestamps);
-
-        vm.stopPrank();
     }
 }

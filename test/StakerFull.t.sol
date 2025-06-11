@@ -8,12 +8,7 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-/* TODO: Convert startPrank to prank where applicable */
-/* TODO: Clean up the comments                        */
-/* TODO: Check precision                              */
-/* TODO: Check signatures                             */
-/* TODO: Check reentrancy                             */
-
+/* NOTE: These tests do not check common attack vectors like signatures and reentrancy */
 contract StakerFullTest is Test {
     address public alice = address(0xA11CE);
     address public bob = address(0xB0B);
@@ -40,9 +35,6 @@ contract StakerFullTest is Test {
      * Pretend to be the owner address, create mock tokens and a staker, - - - -/
      * set up reward tokens and initialize the staker contract - - - - - - - - */
     function setUp() public {
-        LogUtils.logDebug("Starting prank as owner");
-        vm.startPrank(owner);
-
         LogUtils.logInfo("Instantiating mock tokens");
         stakingToken = new ERC20Mock();
         rewardToken1 = new ERC20Mock();
@@ -59,10 +51,8 @@ contract StakerFullTest is Test {
         LogUtils.logInfo(string.concat("default fee:\t", vm.toString(DEFAULT_FEE)));
         LogUtils.logInfo(string.concat("reward token 1:\t", vm.toString(address(rewardToken1))));
 
+        vm.prank(owner);
         staker = new Staker(owner, address(stakingToken), treasury, DEFAULT_FEE, rewardTokens);
-
-        LogUtils.logInfo("Stopping prank as owner");
-        vm.stopPrank();
 
         LogUtils.logInfo("Minting tokens to test users");
         stakingToken.mint(alice, ALICE_STAKE * 10);
@@ -100,17 +90,14 @@ contract StakerFullTest is Test {
     function test_SetTreasury() public {
         LogUtils.logDebug("Testing setTreasury functionality");
 
-        vm.startPrank(owner);
-
         address newTreasury = makeAddr("newTreasury");
 
         vm.expectEmit();
         emit Staker.TreasurySet(newTreasury);
+        vm.prank(owner);
         staker.setTreasury(newTreasury);
 
         assertEq(staker.treasury(), newTreasury);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_SetTreasury_RevertWhenNotOwner - - - - - - - - - - - - - - - -/
@@ -118,14 +105,11 @@ contract StakerFullTest is Test {
     function test_SetTreasury_RevertWhenNotOwner() public {
         LogUtils.logDebug("Testing setTreasury revert when not owner");
 
-        vm.startPrank(alice);
-
         address newTreasury = makeAddr("newTreasury");
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+        vm.prank(alice);
         staker.setTreasury(newTreasury);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_SetTreasury_RevertWhenZeroAddress - - - - - - - - - - - - - - /
@@ -133,12 +117,9 @@ contract StakerFullTest is Test {
     function test_SetTreasury_RevertWhenZeroAddress() public {
         LogUtils.logDebug("Testing setTreasury revert when zero address");
 
-        vm.startPrank(owner);
-
         vm.expectRevert(Staker.InvalidAddress.selector);
+        vm.prank(owner);
         staker.setTreasury(address(0));
-
-        vm.stopPrank();
     }
 
     /* TEST: test_SetFee - - - - - - - - - - - - - - - - - - - - - - - - - - - -/
@@ -146,17 +127,14 @@ contract StakerFullTest is Test {
     function test_SetFee() public {
         LogUtils.logDebug("Testing setFee functionality");
 
-        vm.startPrank(owner);
-
         uint256 newFee = 10_00; // 10%
 
         vm.expectEmit();
         emit Staker.FeeSet(newFee);
+        vm.prank(owner);
         staker.setFee(newFee);
 
         assertEq(staker.fee(), newFee);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_SetFee_RevertWhenNotOwner - - - - - - - - - - - - - - - - - - /
@@ -164,12 +142,9 @@ contract StakerFullTest is Test {
     function test_SetFee_RevertWhenNotOwner() public {
         LogUtils.logDebug("Testing setFee revert when not owner");
 
-        vm.startPrank(alice);
-
         vm.expectRevert();
+        vm.prank(alice);
         staker.setFee(10_00);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_SetFee_RevertWhenTooHigh - - - - - - - - - - - - - - - - - - -/
@@ -177,14 +152,11 @@ contract StakerFullTest is Test {
     function test_SetFee_RevertWhenTooHigh() public {
         LogUtils.logDebug("Testing setFee revert when fee too high");
 
-        vm.startPrank(owner);
-
         uint256 invalidFee = 91_00; // 91%
 
         vm.expectRevert(Staker.InvalidValue.selector);
+        vm.prank(owner);
         staker.setFee(invalidFee);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Stake_Success - - - - - - - - - - - - - - - - - - - - - - - - /
@@ -312,17 +284,14 @@ contract StakerFullTest is Test {
     function test_AddRewardToken_Success() public {
         LogUtils.logDebug("Testing addRewardToken functionality");
 
-        vm.startPrank(owner);
-
         vm.expectEmit();
         emit Staker.RewardTokenAdded(address(rewardToken2));
+        vm.prank(owner);
         staker.addRewardToken(address(rewardToken2));
 
         assertTrue(staker.isRewardToken(address(rewardToken2)));
         assertEq(staker.rewardTokensCounter(), 3); // stakingToken + rewardToken1 + rewardToken2
         assertEq(staker.rewardTokens(2), address(rewardToken2));
-
-        vm.stopPrank();
     }
 
     /* TEST: test_AddRewardToken_RevertWhenNotOwner - - - - - - - - - - - - - - /
@@ -340,12 +309,9 @@ contract StakerFullTest is Test {
     function test_AddRewardToken_RevertWhenAlreadyAdded() public {
         LogUtils.logDebug("Testing addRewardToken revert when already added");
 
-        vm.startPrank(owner);
-
         vm.expectRevert(Staker.AlreadyAdded.selector);
+        vm.prank(owner);
         staker.addRewardToken(address(stakingToken)); // Already added in constructor
-
-        vm.stopPrank();
     }
 
     /* TEST: test_AddRewardToken_RevertWhenZeroAddress - - - - - - - - - - - - -/
@@ -353,12 +319,9 @@ contract StakerFullTest is Test {
     function test_AddRewardToken_RevertWhenZeroAddress() public {
         LogUtils.logDebug("Testing addRewardToken revert when zero address");
 
-        vm.startPrank(owner);
-
         vm.expectRevert(Staker.InvalidAddress.selector);
+        vm.prank(owner);
         staker.addRewardToken(address(0));
-
-        vm.stopPrank();
     }
 
     /* TEST: test_RemoveRewardToken_Success - - - - - - - - - - - - - - - - - - /
@@ -366,20 +329,18 @@ contract StakerFullTest is Test {
     function test_RemoveRewardToken_Success() public {
         LogUtils.logDebug("Testing removeRewardToken functionality");
 
-        vm.startPrank(owner);
-
         // First add rewardToken2
+        vm.prank(owner);
         staker.addRewardToken(address(rewardToken2));
         uint256 countBefore = staker.rewardTokensCounter();
 
         vm.expectEmit();
         emit Staker.RewardTokenRemoved(address(rewardToken1));
+        vm.prank(owner);
         staker.removeRewardToken(address(rewardToken1));
 
         assertFalse(staker.isRewardToken(address(rewardToken1)));
         assertEq(staker.rewardTokensCounter(), countBefore - 1);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_RemoveRewardToken_RevertWhenNotOwner - - - - - - - - - - - - -/
@@ -397,12 +358,9 @@ contract StakerFullTest is Test {
     function test_RemoveRewardToken_RevertWhenNotPresent() public {
         LogUtils.logDebug("Testing removeRewardToken revert when not present");
 
-        vm.startPrank(owner);
-
         vm.expectRevert(Staker.NotPresent.selector);
+        vm.prank(owner);
         staker.removeRewardToken(address(rewardToken2)); // Not added yet
-
-        vm.stopPrank();
     }
 
     /* TEST: test_ClaimEarnings_Success - - - - - - - - - - - - - - - - - - - - /
@@ -438,10 +396,10 @@ contract StakerFullTest is Test {
         LogUtils.logDebug("Testing claimEarnings with multiple stakes");
 
         // Alice makes two stakes
-        vm.startPrank(alice);
+        vm.prank(alice);
         staker.stake(alice, ALICE_STAKE, false);
+        vm.prank(alice);
         staker.stake(alice, ALICE_STAKE, false);
-        vm.stopPrank();
 
         // Send reward tokens
         uint256 rewardAmount = 2000 * 10 ** 18;
@@ -679,11 +637,10 @@ contract StakerFullTest is Test {
 
         address recipient = makeAddr("recipient");
 
-        vm.startPrank(owner);
         vm.expectEmit();
         emit Staker.Swept(address(nonRewardToken), recipient, sweepAmount);
+        vm.prank(owner);
         staker.sweep(IERC20(address(nonRewardToken)), recipient);
-        vm.stopPrank();
 
         assertEq(nonRewardToken.balanceOf(recipient), sweepAmount);
         assertEq(nonRewardToken.balanceOf(address(staker)), 0);
@@ -716,11 +673,10 @@ contract StakerFullTest is Test {
         uint256 treasuryBalanceBefore = rewardToken2.balanceOf(treasury);
 
         // Sweep the removed token
-        vm.startPrank(owner);
         vm.expectEmit();
         emit Staker.Swept(address(rewardToken2), treasury, 1000 * 10 ** 18);
+        vm.prank(owner);
         staker.sweep(IERC20(address(rewardToken2)), treasury);
-        vm.stopPrank();
 
         // Verify the full balance was sent to treasury
         assertEq(rewardToken2.balanceOf(treasury), treasuryBalanceBefore + 1000 * 10 ** 18);
@@ -743,10 +699,9 @@ contract StakerFullTest is Test {
         address recipient = makeAddr("recipient");
 
         // stakingToken is a reward token, so sweep should revert
-        vm.startPrank(owner);
         vm.expectRevert();
+        vm.prank(owner);
         staker.sweep(IERC20(address(stakingToken)), recipient);
-        vm.stopPrank();
 
         // Verify tokens remain in staker
         assertEq(stakingToken.balanceOf(address(staker)), ALICE_STAKE + excessAmount);
@@ -770,10 +725,9 @@ contract StakerFullTest is Test {
     function test_Sweep_RevertWhenRewardToken() public {
         LogUtils.logDebug("Testing sweep revert when reward token");
 
-        vm.startPrank(owner);
         vm.expectRevert();
+        vm.prank(owner);
         staker.sweep(IERC20(address(rewardToken1)), owner);
-        vm.stopPrank();
     }
 
     /* TEST: test_Sweep_RevertWhenNoBalance - - - - - - - - - - - - - - - - - - /
@@ -783,10 +737,9 @@ contract StakerFullTest is Test {
 
         ERC20Mock nonRewardToken = new ERC20Mock();
 
-        vm.startPrank(owner);
         vm.expectRevert();
+        vm.prank(owner);
         staker.sweep(IERC20(address(nonRewardToken)), owner);
-        vm.stopPrank();
     }
 
     /* TEST: test_PendingRewards - - - - - - - - - - - - - - - - - - - - - - - -/
@@ -1052,11 +1005,12 @@ contract StakerFullTest is Test {
         LogUtils.logDebug("Testing getAccountStakeData revert on existing stake with invalid index");
 
         // Alice creates multiple stakes
-        vm.startPrank(alice);
+        vm.prank(alice);
         staker.stake(alice, ALICE_STAKE, true);
+        vm.prank(alice);
         staker.stake(alice, ALICE_STAKE, true);
+        vm.prank(alice);
         staker.stake(alice, ALICE_STAKE, true);
-        vm.stopPrank();
 
         // Verify valid indexes work
         staker.getAccountStakeData(alice, 0);

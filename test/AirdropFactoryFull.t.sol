@@ -9,11 +9,7 @@ import {LogUtils} from "test/utils/LogUtils.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-/* TODO: Convert startPrank to prank where applicable */
-/* TODO: Clean up the comments                        */
-/* TODO: Check precision                              */
-/* TODO: Check signatures                             */
-/* TODO: Check reentrancy                             */
+/* NOTE: These tests do not check common attack vectors like signatures and reentrancy */
 contract AirdropFactoryFullTest is Test {
     address public alice = address(0xA11CE);
     address public bob = address(0xB0B);
@@ -39,15 +35,13 @@ contract AirdropFactoryFullTest is Test {
     /* TEST: setUp - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - /
      * Set up the test environment with factory, implementation and mock deps - -*/
     function setUp() public {
-        LogUtils.logDebug("Starting prank as owner");
-        vm.startPrank(owner);
-
         LogUtils.logInfo(string.concat("[OWNER] ", vm.toString(owner)));
         token = new ERC20Mock();
 
         LogUtils.logInfo("Instantiating a mock staker");
         address[] memory rewardTokens = new address[](1);
         rewardTokens[0] = address(2);
+        vm.prank(owner);
         staker = new Staker(owner, address(token), treasury, DEFAULT_STAKER_FEE, rewardTokens);
         LogUtils.logInfo(string.concat("[TOKEN] ", vm.toString(address(token))));
         LogUtils.logInfo(string.concat("[TREASURY] ", vm.toString(address(treasury))));
@@ -64,9 +58,6 @@ contract AirdropFactoryFullTest is Test {
         LogUtils.logInfo("Pushing timestamps");
         timestamps.push(block.timestamp + 1 days);
         timestamps.push(block.timestamp + 7 days);
-
-        LogUtils.logDebug("Stopping prank as owner");
-        vm.stopPrank();
     }
 
     /* TEST: test_Constructor - - - - - - - - - - - - - - - - - - - - - - - - - -/
@@ -96,19 +87,16 @@ contract AirdropFactoryFullTest is Test {
     function test_SetImplementation() public {
         LogUtils.logDebug("Testing setImplementation functionality");
 
-        vm.startPrank(owner);
-
         LogUtils.logInfo("Creating new implementation");
         Airdrop newImpl = new Airdrop();
 
         LogUtils.logInfo("Setting new implementation");
         vm.expectEmit();
         emit AirdropFactory.ImplementationSet(address(newImpl));
+        vm.prank(owner);
         factory.setImplementation(address(newImpl));
 
         assertEq(factory.implementation(), address(newImpl));
-
-        vm.stopPrank();
     }
 
     /* TEST: test_SetImplementation_RevertWhenNotOwner - - - - - - - - - - - - - /
@@ -116,14 +104,11 @@ contract AirdropFactoryFullTest is Test {
     function test_SetImplementation_RevertWhenNotOwner() public {
         LogUtils.logDebug("Testing setImplementation revert when not owner");
 
-        vm.startPrank(notOwner);
-
         Airdrop newImpl = new Airdrop();
 
         vm.expectRevert();
+        vm.prank(notOwner);
         factory.setImplementation(address(newImpl));
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Deploy_Success - - - - - - - - - - - - - - - - - - - - - - - - /
@@ -131,9 +116,8 @@ contract AirdropFactoryFullTest is Test {
     function test_Deploy_Success() public {
         LogUtils.logDebug("Testing successful deployment");
 
-        vm.startPrank(owner);
-
         LogUtils.logInfo("Deploying new airdrop instance");
+        vm.prank(owner);
         address instance = factory.deploy(
             address(token),
             address(staker),
@@ -161,8 +145,6 @@ contract AirdropFactoryFullTest is Test {
         assertEq(airdrop.owner(), owner); // Should default to factory owner
         assertEq(airdrop.unlocks(0), timestamps[0]);
         assertEq(airdrop.unlocks(1), timestamps[1]);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Deploy_WithCustomOwner - - - - - - - - - - - - - - - - - - - - /
@@ -177,8 +159,6 @@ contract AirdropFactoryFullTest is Test {
 
         Airdrop airdrop = Airdrop(instance);
         assertEq(airdrop.owner(), customOwner);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Deploy_EmitsEvent - - - - - - - - - - - - - - - - - - - - - - -/
@@ -187,15 +167,14 @@ contract AirdropFactoryFullTest is Test {
         LogUtils.logDebug("Testing deploy event emission");
 
         LogUtils.logDebug("Expecting emit");
-        vm.startPrank(owner);
 
         address instance = address(0x50FFC001);
 
         vm.expectEmit(false, true, true, false);
         emit AirdropFactory.Deployed(address(instance), address(token), address(airdropImpl));
 
+        vm.prank(owner);
         factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
-        vm.stopPrank();
     }
 
     /* TEST: test_Deploy_RevertWhenNotOwner - - - - - - - - - - - - - - - - - - /
@@ -203,11 +182,9 @@ contract AirdropFactoryFullTest is Test {
     function test_Deploy_RevertWhenNotOwner() public {
         LogUtils.logDebug("Testing deploy revert when not owner");
 
-        vm.startPrank(notOwner);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notOwner));
+        vm.prank(notOwner);
         factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Deploy_RevertWhenImplementationNotSet - - - - - - - - - - - - -/
@@ -215,15 +192,13 @@ contract AirdropFactoryFullTest is Test {
     function test_Deploy_RevertWhenImplementationNotSet() public {
         LogUtils.logDebug("Testing deploy revert when implementation not set");
 
-        vm.startPrank(owner);
-
         // Set implementation to zero address
+        vm.prank(owner);
         factory.setImplementation(address(0));
 
         vm.expectRevert(AirdropFactory.ImplementationNotSet.selector);
+        vm.prank(owner);
         factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Deploy_MultipleInstances - - - - - - - - - - - - - - - - - - - /
@@ -231,15 +206,16 @@ contract AirdropFactoryFullTest is Test {
     function test_Deploy_MultipleInstances() public {
         LogUtils.logDebug("Testing multiple deployments");
 
-        vm.startPrank(owner);
-
         LogUtils.logInfo("Deploying first instance");
+        vm.prank(owner);
         address instance1 = factory.deploy(address(token), address(staker), treasury, signer, alice, timestamps);
 
         LogUtils.logInfo("Deploying second instance");
+        vm.prank(owner);
         address instance2 = factory.deploy(address(token), address(staker), treasury, signer, bob, timestamps);
 
         LogUtils.logInfo("Deploying third instance");
+        vm.prank(owner);
         address instance3 = factory.deploy(address(token), address(staker), treasury, signer, charlie, timestamps);
 
         // Verify all deployments
@@ -253,8 +229,6 @@ contract AirdropFactoryFullTest is Test {
         assertEq(factory.deployments(0), instance1);
         assertEq(factory.deployments(1), instance2);
         assertEq(factory.deployments(2), instance3);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_NoOfDeployments - - - - - - - - - - - - - - - - - - - - - - - -/
@@ -264,15 +238,13 @@ contract AirdropFactoryFullTest is Test {
 
         assertEq(factory.noOfDeployments(), 0);
 
-        vm.startPrank(owner);
-
+        vm.prank(owner);
         factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
         assertEq(factory.noOfDeployments(), 1);
 
+        vm.prank(owner);
         factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
         assertEq(factory.noOfDeployments(), 2);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_GetLatestDeployment_WhenNoDeployments - - - - - - - - - - - - -/
@@ -288,15 +260,13 @@ contract AirdropFactoryFullTest is Test {
     function test_GetLatestDeployment_WithDeployments() public {
         LogUtils.logDebug("Testing getLatestDeployment with deployments");
 
-        vm.startPrank(owner);
-
+        vm.prank(owner);
         address instance1 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
         assertEq(factory.getLatestDeployment(), instance1);
 
+        vm.prank(owner);
         address instance2 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
         assertEq(factory.getLatestDeployment(), instance2);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_GetDeployments_Success - - - - - - - - - - - - - - - - - - - - /
@@ -304,11 +274,10 @@ contract AirdropFactoryFullTest is Test {
     function test_GetDeployments_Success() public {
         LogUtils.logDebug("Testing getDeployments");
 
-        vm.startPrank(owner);
-
         // Deploy 5 instances
         address[] memory instances = new address[](5);
         for (uint256 i = 0; i < 5; i++) {
+            vm.prank(owner);
             instances[i] = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
         }
 
@@ -326,8 +295,6 @@ contract AirdropFactoryFullTest is Test {
         for (uint256 i = 0; i < 5; i++) {
             assertEq(deployments[i], instances[i]);
         }
-
-        vm.stopPrank();
     }
 
     /* TEST: test_GetDeployments_SingleElement - - - - - - - - - - - - - - - - - /
@@ -335,15 +302,12 @@ contract AirdropFactoryFullTest is Test {
     function test_GetDeployments_SingleElement() public {
         LogUtils.logDebug("Testing getDeployments with single element");
 
-        vm.startPrank(owner);
-
+        vm.prank(owner);
         address instance = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
 
         address[] memory deployments = factory.getDeployments(0, 0);
         assertEq(deployments.length, 1);
         assertEq(deployments[0], instance);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_GetDeployments_RevertWhenInvalidRange - - - - - - - - - - - - -/
@@ -351,10 +315,9 @@ contract AirdropFactoryFullTest is Test {
     function test_GetDeployments_RevertWhenInvalidRange() public {
         LogUtils.logDebug("Testing getDeployments revert on invalid range");
 
-        vm.startPrank(owner);
-
         // Deploy 3 instances
         for (uint256 i = 0; i < 3; i++) {
+            vm.prank(owner);
             factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
         }
 
@@ -367,8 +330,6 @@ contract AirdropFactoryFullTest is Test {
         factory.getDeployments(0, 3);
 
         // Test when array is empty
-        vm.stopPrank();
-
         // Deploy new factory with no deployments
         AirdropFactory emptyFactory = new AirdropFactory(address(airdropImpl), owner);
 
@@ -381,9 +342,8 @@ contract AirdropFactoryFullTest is Test {
     function test_IsDeployedThroughFactory() public {
         LogUtils.logDebug("Testing isDeployedThroughFactory");
 
-        vm.startPrank(owner);
-
         // Deploy through factory
+        vm.prank(owner);
         address factoryDeployment = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
 
         // Deploy directly (not through factory)
@@ -393,8 +353,6 @@ contract AirdropFactoryFullTest is Test {
         assertFalse(factory.isDeployedThroughFactory(address(directDeployment)));
         assertFalse(factory.isDeployedThroughFactory(address(0)));
         assertFalse(factory.isDeployedThroughFactory(alice));
-
-        vm.stopPrank();
     }
 
     /* TEST: test_DeploymentToImplementation_Mapping - - - - - - - - - - - - - - /
@@ -402,24 +360,23 @@ contract AirdropFactoryFullTest is Test {
     function test_DeploymentToImplementation_Mapping() public {
         LogUtils.logDebug("Testing deploymentToImplementation mapping");
 
-        vm.startPrank(owner);
-
         // Deploy with first implementation
+        vm.prank(owner);
         address instance1 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
         assertEq(factory.deploymentToImplementation(instance1), address(airdropImpl));
 
         // Change implementation
         Airdrop newImpl = new Airdrop();
+        vm.prank(owner);
         factory.setImplementation(address(newImpl));
 
         // Deploy with new implementation
+        vm.prank(owner);
         address instance2 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
         assertEq(factory.deploymentToImplementation(instance2), address(newImpl));
 
         // Verify first deployment still points to old implementation
         assertEq(factory.deploymentToImplementation(instance1), address(airdropImpl));
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Deploy_InitializationFailure - - - - - - - - - - - - - - - - - /
@@ -427,10 +384,9 @@ contract AirdropFactoryFullTest is Test {
     function test_Deploy_InitializationFailure() public {
         LogUtils.logDebug("Testing deployment with initialization failure");
 
-        vm.startPrank(owner);
-
         // Deploy with invalid parameters that will cause initialization to fail
         vm.expectRevert();
+        vm.prank(owner);
         factory.deploy(
             address(0), // Invalid token address
             address(staker),
@@ -442,8 +398,6 @@ contract AirdropFactoryFullTest is Test {
 
         // Verify no deployment was recorded
         assertEq(factory.noOfDeployments(), 0);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_Deployments_ArrayAccess - - - - - - - - - - - - - - - - - - - -/
@@ -451,17 +405,16 @@ contract AirdropFactoryFullTest is Test {
     function test_Deployments_ArrayAccess() public {
         LogUtils.logDebug("Testing deployments array direct access");
 
-        vm.startPrank(owner);
-
+        vm.prank(owner);
         address instance1 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        vm.prank(owner);
         address instance2 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        vm.prank(owner);
         address instance3 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
 
         assertEq(factory.deployments(0), instance1);
         assertEq(factory.deployments(1), instance2);
         assertEq(factory.deployments(2), instance3);
-
-        vm.stopPrank();
     }
 
     /* TEST: test_ClonePattern_Verification - - - - - - - - - - - - - - - - - - -/
@@ -469,9 +422,9 @@ contract AirdropFactoryFullTest is Test {
     function test_ClonePattern_Verification() public {
         LogUtils.logDebug("Testing clone pattern implementation");
 
-        vm.startPrank(owner);
-
+        vm.prank(owner);
         address instance1 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        vm.prank(owner);
         address instance2 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
 
         // Verify instances are different addresses
@@ -495,7 +448,5 @@ contract AirdropFactoryFullTest is Test {
         assertEq(codeSize1, 45);
         assertEq(codeSize2, 45);
         assertEq(codeSize1, codeSize2);
-
-        vm.stopPrank();
     }
 }
