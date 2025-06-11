@@ -31,8 +31,8 @@ contract Staker is Ownable {
     /// @notice Reward debt per token per user's stake
     mapping(bytes32 stakeHash => uint256) private rewardDebt;
 
-    /// @notice Dragonswap token address
-    IERC20 public immutable dragon;
+    /// @notice stakingToken token address
+    IERC20 public immutable stakingToken;
     /// @notice Base of a `stakeHash` - used to retrieve `rewardDebt``
     bytes32 private immutable debtHashBase = keccak256(abi.encode(block.chainid, address(this)));
     /// @notice Lock period length in seconds
@@ -68,12 +68,12 @@ contract Staker is Ownable {
     error AccountCrossingStakeLimit();
     error StakeIsLocked();
 
-    constructor(address _owner, address _dragon, address _treasury, uint256 _fee, address[] memory _rewardTokens)
+    constructor(address _owner, address _stakingToken, address _treasury, uint256 _fee, address[] memory _rewardTokens)
         Ownable(_owner)
     {
-        // Set the Dragonswap token
-        if (_dragon == address(0)) revert InvalidAddress();
-        dragon = IERC20(_dragon);
+        // Set the stakingToken token
+        if (_stakingToken == address(0)) revert InvalidAddress();
+        stakingToken = IERC20(_stakingToken);
 
         if (_treasury == address(0)) revert InvalidAddress();
         treasury = _treasury;
@@ -85,9 +85,9 @@ contract Staker is Ownable {
         emit FeeSet(_fee);
 
         // Add reward tokens
-        isRewardToken[_dragon] = true;
-        rewardTokens.push(_dragon);
-        emit RewardTokenAdded(_dragon);
+        isRewardToken[_stakingToken] = true;
+        rewardTokens.push(_stakingToken);
+        emit RewardTokenAdded(_stakingToken);
         for (uint256 i; i < _rewardTokens.length; ++i) {
             address _rewardToken = _rewardTokens[i];
             if (_rewardToken == address(0)) revert InvalidAddress();
@@ -119,8 +119,8 @@ contract Staker is Ownable {
     }
 
     /**
-     * @notice Deposit Dragon in order to receive the reward tokens
-     * @param amount The amount of Dragon to deposit
+     * @notice Deposit stakingToken in order to receive the reward tokens
+     * @param amount The amount of stakingToken to deposit
      */
     function stake(address account, uint256 amount, bool locking) external {
         if (account == address(0)) revert ZeroAddress();
@@ -147,7 +147,7 @@ contract Staker is Ownable {
         totalDeposits += amount;
 
         // Transfer tokens
-        dragon.safeTransferFrom(msg.sender, address(this), amount);
+        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(msg.sender, account, amount, locking);
     }
@@ -226,8 +226,8 @@ contract Staker is Ownable {
     }
 
     /*
-     * @notice Withdraw Dragon and harvest the rewards
-     * @param amount The amount of Dragon to withdraw
+     * @notice Withdraw stakingToken and harvest the rewards
+     * @param amount The amount of stakingToken to withdraw
      */
     function withdraw(uint256[] calldata stakeIndexes) external {
         uint256 numberOfStakeIndexes = stakeIndexes.length;
@@ -268,10 +268,10 @@ contract Staker is Ownable {
             if (_stake.unlockTimestamp == 0) {
                 feeAmount = amount * fee / feePrecision;
                 amount -= feeAmount;
-                dragon.safeTransfer(treasury, feeAmount);
+                stakingToken.safeTransfer(treasury, feeAmount);
             }
 
-            dragon.safeTransfer(msg.sender, amount);
+            stakingToken.safeTransfer(msg.sender, amount);
             emit Withdraw(msg.sender, stakeIndex, feeAmount);
         }
     }
@@ -300,10 +300,10 @@ contract Staker is Ownable {
             if (_stake.unlockTimestamp == 0) {
                 feeAmount = amount * fee / feePrecision;
                 amount -= feeAmount;
-                dragon.safeTransfer(treasury, feeAmount);
+                stakingToken.safeTransfer(treasury, feeAmount);
             }
 
-            dragon.safeTransfer(msg.sender, amount);
+            stakingToken.safeTransfer(msg.sender, amount);
             emit EmergencyWithdraw(msg.sender, stakeIndex, feeAmount);
         }
     }
@@ -317,7 +317,7 @@ contract Staker is Ownable {
         if (isRewardToken[address(token)]) revert();
 
         uint256 balance = token.balanceOf(address(this));
-        if (token == dragon) {
+        if (token == stakingToken) {
             unchecked {
                 balance -= totalDeposits;
             }
@@ -339,7 +339,7 @@ contract Staker is Ownable {
         uint256 _accRewardTokenPerShare = accRewardsPerShare[token];
 
         uint256 currRewardBalance = IERC20(token).balanceOf(address(this));
-        uint256 rewardBalance = token == address(dragon) ? currRewardBalance - _totalDeposits : currRewardBalance;
+        uint256 rewardBalance = token == address(stakingToken) ? currRewardBalance - _totalDeposits : currRewardBalance;
 
         if (rewardBalance != lastRewardBalance[token] && _totalDeposits != 0) {
             uint256 accruedReward = rewardBalance - lastRewardBalance[token];
@@ -412,7 +412,7 @@ contract Staker is Ownable {
         uint256 _lastRewardBalance = lastRewardBalance[token];
 
         uint256 balance = IERC20(token).balanceOf(address(this));
-        uint256 rewardBalance = token == address(dragon) ? balance - _totalDeposits : balance;
+        uint256 rewardBalance = token == address(stakingToken) ? balance - _totalDeposits : balance;
 
         if (rewardBalance == _lastRewardBalance || _totalDeposits == 0) return;
 
@@ -422,7 +422,7 @@ contract Staker is Ownable {
 
     function _payout(IERC20 token, uint256 pending) private {
         uint256 currRewardBalance = token.balanceOf(address(this));
-        uint256 rewardBalance = token == dragon ? currRewardBalance - totalDeposits : currRewardBalance;
+        uint256 rewardBalance = token == stakingToken ? currRewardBalance - totalDeposits : currRewardBalance;
         uint256 amount = pending > rewardBalance ? rewardBalance : pending;
         lastRewardBalance[address(token)] -= amount;
         token.safeTransfer(msg.sender, amount);
