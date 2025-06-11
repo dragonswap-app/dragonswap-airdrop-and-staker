@@ -31,7 +31,6 @@ contract Staker is Ownable {
     /// @notice Reward debt per token per user's stake
     mapping(bytes32 stakeHash => uint256) private rewardDebt;
 
-
     /// @notice stakingToken address
     IERC20 public immutable stakingToken;
     /// @notice Base of a `stakeHash` - used to retrieve `rewardDebt``
