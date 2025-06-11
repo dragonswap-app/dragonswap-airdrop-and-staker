@@ -13,6 +13,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 /* TODO: Check precision                              */
 /* TODO: Check signatures                             */
 /* TODO: Check reentrancy                             */
+
 contract StakerFullTest is Test {
     address public alice = address(0xA11CE);
     address public bob = address(0xB0B);
@@ -471,6 +472,49 @@ contract StakerFullTest is Test {
         staker.claimEarnings(stakeIndexes);
     }
 
+    /* TEST: test_ClaimEarnings_RemovedRewardToken - - - - - - - - - - - - - - -/
+     * Tests claiming earnings of a removed reward token - - - - - - - - - - - -*/
+    function test_ClaimEarnings_RemovedRewardToken() public {
+        LogUtils.logDebug("Testing claimEarnings with removed reward token");
+
+        // Add second reward token
+        vm.prank(owner);
+        staker.addRewardToken(address(rewardToken2));
+
+        // Alice stakes
+        vm.prank(alice);
+        staker.stake(alice, ALICE_STAKE, true);
+
+        // Send rewards for both tokens
+        rewardToken1.mint(address(staker), 1000 * 10 ** 18);
+        rewardToken2.mint(address(staker), 500 * 10 ** 18);
+
+        // Verify pending rewards
+        assertEq(staker.pendingRewards(alice, 0, address(rewardToken1)), 1000 * 10 ** 18);
+        assertEq(staker.pendingRewards(alice, 0, address(rewardToken2)), 500 * 10 ** 18);
+
+        // Remove rewardToken2
+        vm.prank(owner);
+        staker.removeRewardToken(address(rewardToken2));
+
+        // Try to claim earnings
+        uint256[] memory stakeIndexes = new uint256[](1);
+        stakeIndexes[0] = 0;
+
+        uint256 aliceBalance1Before = rewardToken1.balanceOf(alice);
+        uint256 aliceBalance2Before = rewardToken2.balanceOf(alice);
+
+        vm.prank(alice);
+        staker.claimEarnings(stakeIndexes);
+
+        // Should only receive rewardToken1
+        assertEq(rewardToken1.balanceOf(alice), aliceBalance1Before + 1000 * 10 ** 18);
+        assertEq(rewardToken2.balanceOf(alice), aliceBalance2Before); // No change
+
+        // Verify pending rewards after claim
+        assertEq(staker.pendingRewards(alice, 0, address(rewardToken1)), 0);
+    }
+
     /* TEST: test_Withdraw_Success_NoLock - - - - - - - - - - - - - - - - - - - /
      * Tests withdrawing an unlocked stake with fee - - - - - - - - - - - - - */
     function test_Withdraw_Success_NoLock() public {
@@ -645,6 +689,44 @@ contract StakerFullTest is Test {
         assertEq(nonRewardToken.balanceOf(address(staker)), 0);
     }
 
+    /* TEST: test_Sweep_AfterRemovingRewardToken - - - - - - - - - - - - - - - -/
+     * Tests sweeping after removing an existing reward token - - - - - - - - -*/
+    function test_Sweep_AfterRemovingRewardToken() public {
+        LogUtils.logDebug("Testing sweep after removing reward token");
+
+        // Add second reward token
+        vm.prank(owner);
+        staker.addRewardToken(address(rewardToken2));
+
+        // Alice and Bob stake
+        vm.prank(alice);
+        staker.stake(alice, ALICE_STAKE, true);
+
+        vm.prank(bob);
+        staker.stake(bob, BOB_STAKE, true);
+
+        // Send rewards
+        rewardToken1.mint(address(staker), 2000 * 10 ** 18);
+        rewardToken2.mint(address(staker), 1000 * 10 ** 18);
+
+        // Remove rewardToken2
+        vm.prank(owner);
+        staker.removeRewardToken(address(rewardToken2));
+
+        uint256 treasuryBalanceBefore = rewardToken2.balanceOf(treasury);
+
+        // Sweep the removed token
+        vm.startPrank(owner);
+        vm.expectEmit();
+        emit Staker.Swept(address(rewardToken2), treasury, 1000 * 10 ** 18);
+        staker.sweep(IERC20(address(rewardToken2)), treasury);
+        vm.stopPrank();
+
+        // Verify the full balance was sent to treasury
+        assertEq(rewardToken2.balanceOf(treasury), treasuryBalanceBefore + 1000 * 10 ** 18);
+        assertEq(rewardToken2.balanceOf(address(staker)), 0);
+    }
+
     /* TEST: test_Sweep_StakingToken_RevertWhenRewardToken - - - - - - - - - - - /
      * Tests that stakingToken token cannot be swept as it's a reward token - - - - */
     function test_Sweep_StakingToken_RevertWhenRewardToken() public {
@@ -810,6 +892,61 @@ contract StakerFullTest is Test {
         assertEq(rewardToken1.balanceOf(charlie), 0); // Hasn't claimed yet
     }
 
+    /* TEST: test_ExactRewardDistribution_ThreeUsers - - - - - - - - - - - - - -/
+     * Tests exact reward calculations for three users with different stakes - -*/
+    function test_ExactRewardDistribution_ThreeUsers() public {
+        LogUtils.logDebug("Testing exact reward distribution for three users");
+
+        // Three users stake different amounts
+        uint256 totalStake = ALICE_STAKE + BOB_STAKE + CHARLIE_STAKE;
+
+        vm.prank(alice);
+        staker.stake(alice, ALICE_STAKE, true);
+
+        vm.prank(bob);
+        staker.stake(bob, BOB_STAKE, true);
+
+        vm.prank(charlie);
+        staker.stake(charlie, CHARLIE_STAKE, true);
+
+        // Send rewards
+        uint256 totalRewards = 6000 * 10 ** 18;
+        rewardToken1.mint(address(staker), totalRewards);
+
+        // Calculate expected rewards based on stake proportion
+        uint256 expectedAliceReward = (totalRewards * ALICE_STAKE) / totalStake;
+        uint256 expectedBobReward = (totalRewards * BOB_STAKE) / totalStake;
+        uint256 expectedCharlieReward = (totalRewards * CHARLIE_STAKE) / totalStake;
+
+        // Verify pending rewards match expected values
+        assertEq(staker.pendingRewards(alice, 0, address(rewardToken1)), expectedAliceReward);
+        assertEq(staker.pendingRewards(bob, 0, address(rewardToken1)), expectedBobReward);
+        assertEq(staker.pendingRewards(charlie, 0, address(rewardToken1)), expectedCharlieReward);
+
+        // Claim and verify exact balances
+        uint256[] memory stakeIndexes = new uint256[](1);
+        stakeIndexes[0] = 0;
+
+        uint256 aliceBalanceBefore = rewardToken1.balanceOf(alice);
+        vm.prank(alice);
+        staker.claimEarnings(stakeIndexes);
+        assertEq(rewardToken1.balanceOf(alice), aliceBalanceBefore + expectedAliceReward);
+
+        uint256 bobBalanceBefore = rewardToken1.balanceOf(bob);
+        vm.prank(bob);
+        staker.claimEarnings(stakeIndexes);
+        assertEq(rewardToken1.balanceOf(bob), bobBalanceBefore + expectedBobReward);
+
+        uint256 charlieBalanceBefore = rewardToken1.balanceOf(charlie);
+        vm.prank(charlie);
+        staker.claimEarnings(stakeIndexes);
+        assertEq(rewardToken1.balanceOf(charlie), charlieBalanceBefore + expectedCharlieReward);
+
+        // Verify all rewards distributed (accounting for rounding)
+        uint256 totalDistributed = expectedAliceReward + expectedBobReward + expectedCharlieReward;
+        assertLe(totalRewards - totalDistributed, 2);
+    }
+
     /* TEST: test_Constructor_RevertConditions - - - - - - - - - - - - - - - - -/
      * Tests constructor revert conditions - - - - - - - - - - - - - - - - - - */
     function test_Constructor_RevertConditions() public {
@@ -852,6 +989,47 @@ contract StakerFullTest is Test {
         assertTrue(hash1 != hash4);
     }
 
+    /* TEST: test_ComputeDebtAccessHash_RealScenario - - - - - - - - - - - - - -/
+     * Tests debt hash computation aligns with hash map keys in real scenario- -*/
+    function test_ComputeDebtAccessHash_RealScenario() public {
+        LogUtils.logDebug("Testing computeDebtAccessHash in real scenario");
+
+        // Alice stakes
+        vm.prank(alice);
+        staker.stake(alice, ALICE_STAKE, true);
+
+        // Send rewards
+        rewardToken1.mint(address(staker), 1000 * 10 ** 18);
+
+        // Get stake data before claim
+        (uint256 amount, uint256 unlockTimestamp, uint256[] memory rewardDebts) = staker.getAccountStakeData(alice, 0);
+        assertEq(amount, ALICE_STAKE);
+        assertGt(unlockTimestamp, 0);
+
+        // Initial debt should be 0
+        assertEq(rewardDebts[0], 0); // stakingToken debt
+        assertEq(rewardDebts[1], 0); // rewardToken1 debt
+
+        // Compute the hash
+        bytes32 computedHash = staker.computeDebtAccessHash(alice, 0, address(rewardToken1));
+
+        // Claim rewards
+        uint256[] memory stakeIndexes = new uint256[](1);
+        stakeIndexes[0] = 0;
+        vm.prank(alice);
+        staker.claimEarnings(stakeIndexes);
+
+        // Get stake data after claim
+        (,, uint256[] memory newRewardDebts) = staker.getAccountStakeData(alice, 0);
+
+        // Debt should have increased after claiming
+        assertGt(newRewardDebts[1], rewardDebts[1]); // rewardToken1 debt increased
+
+        // Verify hash is deterministic
+        bytes32 newComputedHash = staker.computeDebtAccessHash(alice, 0, address(rewardToken1));
+        assertEq(computedHash, newComputedHash);
+    }
+
     /* TEST: test_GetAccountStakeData_RevertWhenInvalidIndex - - - - - - - - - -/
      * Tests getAccountStakeData reverts with invalid index - - - - - - - - - -*/
     function test_GetAccountStakeData_RevertWhenInvalidIndex() public {
@@ -859,5 +1037,46 @@ contract StakerFullTest is Test {
 
         vm.expectRevert(Staker.InvalidStakeIndex.selector);
         staker.getAccountStakeData(alice, 0); // No stakes yet
+    }
+
+    /* TEST: test_GetAccountStakeData_RevertWhenInvalidIndex_ExistingStake - - -/
+     * Tests getAccountStakeData reverts on existing stake with invalid index -*/
+    function test_GetAccountStakeData_RevertWhenInvalidIndex_ExistingStake() public {
+        LogUtils.logDebug("Testing getAccountStakeData revert on existing stake with invalid index");
+
+        // Alice creates multiple stakes
+        vm.startPrank(alice);
+        staker.stake(alice, ALICE_STAKE, true);
+        staker.stake(alice, ALICE_STAKE, true);
+        staker.stake(alice, ALICE_STAKE, true);
+        vm.stopPrank();
+
+        // Verify valid indexes work
+        staker.getAccountStakeData(alice, 0);
+        staker.getAccountStakeData(alice, 1);
+        staker.getAccountStakeData(alice, 2);
+
+        // Try invalid index
+        vm.expectRevert(Staker.InvalidStakeIndex.selector);
+        staker.getAccountStakeData(alice, 3);
+
+        // Try much larger invalid index
+        vm.expectRevert(Staker.InvalidStakeIndex.selector);
+        staker.getAccountStakeData(alice, 999);
+
+        // Withdraw one stake
+        uint256[] memory stakeIndexes = new uint256[](1);
+        stakeIndexes[0] = 1;
+
+        // Wait for unlock
+        vm.warp(block.timestamp + LOCK_TIMESPAN + 1);
+
+        vm.prank(alice);
+        staker.withdraw(stakeIndexes);
+
+        // Should still be able to access withdrawn stake data (it's marked as claimed)
+        (uint256 amount, uint256 unlockTimestamp,) = staker.getAccountStakeData(alice, 1);
+        assertEq(amount, ALICE_STAKE);
+        assertGt(unlockTimestamp, 0);
     }
 }
