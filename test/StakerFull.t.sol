@@ -27,7 +27,7 @@ contract StakerFullTest is Test {
     uint256 constant LOCK_TIMESPAN = 30 days;
 
     Staker public staker;
-    ERC20Mock public dragon;
+    ERC20Mock public stakingToken;
     ERC20Mock public rewardToken1;
     ERC20Mock public rewardToken2;
 
@@ -42,7 +42,7 @@ contract StakerFullTest is Test {
         vm.startPrank(owner);
 
         LogUtils.logInfo("Instantiating mock tokens");
-        dragon = new ERC20Mock();
+        stakingToken = new ERC20Mock();
         rewardToken1 = new ERC20Mock();
         rewardToken2 = new ERC20Mock();
 
@@ -52,44 +52,44 @@ contract StakerFullTest is Test {
 
         LogUtils.logInfo("Instantiating Staker contract with following values:");
         LogUtils.logInfo(string.concat("owner:\t\t", vm.toString(owner)));
-        LogUtils.logInfo(string.concat("dragon addr:\t", vm.toString(address(dragon))));
+        LogUtils.logInfo(string.concat("stakingToken addr:\t", vm.toString(address(stakingToken))));
         LogUtils.logInfo(string.concat("treasury addr:\t", vm.toString(treasury)));
         LogUtils.logInfo(string.concat("default fee:\t", vm.toString(DEFAULT_FEE)));
         LogUtils.logInfo(string.concat("reward token 1:\t", vm.toString(address(rewardToken1))));
 
-        staker = new Staker(owner, address(dragon), treasury, DEFAULT_FEE, rewardTokens);
+        staker = new Staker(owner, address(stakingToken), treasury, DEFAULT_FEE, rewardTokens);
 
         LogUtils.logInfo("Stopping prank as owner");
         vm.stopPrank();
 
         LogUtils.logInfo("Minting tokens to test users");
-        dragon.mint(alice, ALICE_STAKE * 10);
-        dragon.mint(bob, BOB_STAKE * 10);
-        dragon.mint(charlie, CHARLIE_STAKE * 10);
+        stakingToken.mint(alice, ALICE_STAKE * 10);
+        stakingToken.mint(bob, BOB_STAKE * 10);
+        stakingToken.mint(charlie, CHARLIE_STAKE * 10);
 
         LogUtils.logInfo("Setting up approvals");
         vm.prank(alice);
-        dragon.approve(address(staker), type(uint256).max);
+        stakingToken.approve(address(staker), type(uint256).max);
         vm.prank(bob);
-        dragon.approve(address(staker), type(uint256).max);
+        stakingToken.approve(address(staker), type(uint256).max);
         vm.prank(charlie);
-        dragon.approve(address(staker), type(uint256).max);
+        stakingToken.approve(address(staker), type(uint256).max);
     }
 
     /* TEST: test_Initialize - - - - - - - - - - - - - - - - - - - - - - - - - -/
      * Asserts the validity of values after instantiation- - - - - - - - - - - */
     function test_Initialize() public view {
         LogUtils.logDebug("Starting initialization assertion test");
-        assertEq(address(staker.dragon()), address(dragon));
+        assertEq(address(staker.stakingToken()), address(stakingToken));
         assertEq(staker.treasury(), treasury);
         assertEq(staker.fee(), DEFAULT_FEE);
         assertEq(staker.owner(), owner);
         assertEq(staker.lockTimespan(), LOCK_TIMESPAN);
         assertEq(staker.totalDeposits(), 0);
-        assertEq(staker.rewardTokensCounter(), 2); // dragon + rewardToken1
-        assertTrue(staker.isRewardToken(address(dragon)));
+        assertEq(staker.rewardTokensCounter(), 2); // stakingToken + rewardToken1
+        assertTrue(staker.isRewardToken(address(stakingToken)));
         assertTrue(staker.isRewardToken(address(rewardToken1)));
-        assertEq(staker.rewardTokens(0), address(dragon));
+        assertEq(staker.rewardTokens(0), address(stakingToken));
         assertEq(staker.rewardTokens(1), address(rewardToken1));
     }
 
@@ -190,7 +190,7 @@ contract StakerFullTest is Test {
     function test_Stake_Success() public {
         LogUtils.logDebug("Testing stake functionality");
 
-        uint256 initialBalance = dragon.balanceOf(alice);
+        uint256 initialBalance = stakingToken.balanceOf(alice);
         uint256 initialTotalDeposits = staker.totalDeposits();
 
         vm.prank(alice);
@@ -198,8 +198,8 @@ contract StakerFullTest is Test {
         emit Staker.Deposit(alice, alice, ALICE_STAKE, false);
         staker.stake(alice, ALICE_STAKE, false);
 
-        assertEq(dragon.balanceOf(alice), initialBalance - ALICE_STAKE);
-        assertEq(dragon.balanceOf(address(staker)), ALICE_STAKE);
+        assertEq(stakingToken.balanceOf(alice), initialBalance - ALICE_STAKE);
+        assertEq(stakingToken.balanceOf(address(staker)), ALICE_STAKE);
         assertEq(staker.totalDeposits(), initialTotalDeposits + ALICE_STAKE);
         assertEq(staker.userStakeCount(alice), 1);
 
@@ -317,7 +317,7 @@ contract StakerFullTest is Test {
         staker.addRewardToken(address(rewardToken2));
 
         assertTrue(staker.isRewardToken(address(rewardToken2)));
-        assertEq(staker.rewardTokensCounter(), 3); // dragon + rewardToken1 + rewardToken2
+        assertEq(staker.rewardTokensCounter(), 3); // stakingToken + rewardToken1 + rewardToken2
         assertEq(staker.rewardTokens(2), address(rewardToken2));
 
         vm.stopPrank();
@@ -341,7 +341,7 @@ contract StakerFullTest is Test {
         vm.startPrank(owner);
 
         vm.expectRevert(Staker.AlreadyAdded.selector);
-        staker.addRewardToken(address(dragon)); // Already added in constructor
+        staker.addRewardToken(address(stakingToken)); // Already added in constructor
 
         vm.stopPrank();
     }
@@ -489,8 +489,8 @@ contract StakerFullTest is Test {
         uint256 expectedFee = (ALICE_STAKE * DEFAULT_FEE) / PRECISION;
         uint256 expectedReturn = ALICE_STAKE - expectedFee;
 
-        uint256 treasuryBalanceBefore = dragon.balanceOf(treasury);
-        uint256 aliceBalanceBefore = dragon.balanceOf(alice);
+        uint256 treasuryBalanceBefore = stakingToken.balanceOf(treasury);
+        uint256 aliceBalanceBefore = stakingToken.balanceOf(alice);
 
         vm.prank(alice);
         // The contract emits Payout first, then Withdraw
@@ -501,8 +501,8 @@ contract StakerFullTest is Test {
         staker.withdraw(stakeIndexes);
 
         // Check balances
-        assertEq(dragon.balanceOf(alice), aliceBalanceBefore + expectedReturn);
-        assertEq(dragon.balanceOf(treasury), treasuryBalanceBefore + expectedFee);
+        assertEq(stakingToken.balanceOf(alice), aliceBalanceBefore + expectedReturn);
+        assertEq(stakingToken.balanceOf(treasury), treasuryBalanceBefore + expectedFee);
         assertEq(rewardToken1.balanceOf(alice), rewardAmount);
         assertEq(staker.totalDeposits(), 0);
 
@@ -526,14 +526,14 @@ contract StakerFullTest is Test {
         uint256[] memory stakeIndexes = new uint256[](1);
         stakeIndexes[0] = 0;
 
-        uint256 aliceBalanceBefore = dragon.balanceOf(alice);
+        uint256 aliceBalanceBefore = stakingToken.balanceOf(alice);
 
         vm.prank(alice);
         staker.withdraw(stakeIndexes);
 
         // No fee for locked stakes
-        assertEq(dragon.balanceOf(alice), aliceBalanceBefore + ALICE_STAKE);
-        assertEq(dragon.balanceOf(treasury), 0);
+        assertEq(stakingToken.balanceOf(alice), aliceBalanceBefore + ALICE_STAKE);
+        assertEq(stakingToken.balanceOf(treasury), 0);
     }
 
     /* TEST: test_Withdraw_RevertWhenAlreadyClaimed - - - - - - - - - - - - - -/
@@ -590,7 +590,7 @@ contract StakerFullTest is Test {
         uint256 expectedFee = (ALICE_STAKE * DEFAULT_FEE) / PRECISION;
         uint256 expectedReturn = ALICE_STAKE - expectedFee;
 
-        uint256 aliceBalanceBefore = dragon.balanceOf(alice);
+        uint256 aliceBalanceBefore = stakingToken.balanceOf(alice);
         uint256 aliceRewardBalanceBefore = rewardToken1.balanceOf(alice);
 
         vm.prank(alice);
@@ -599,7 +599,7 @@ contract StakerFullTest is Test {
         staker.emergencyWithdraw(stakeIndexes);
 
         // Check only principal was withdrawn, no rewards
-        assertEq(dragon.balanceOf(alice), aliceBalanceBefore + expectedReturn);
+        assertEq(stakingToken.balanceOf(alice), aliceBalanceBefore + expectedReturn);
         assertEq(rewardToken1.balanceOf(alice), aliceRewardBalanceBefore); // No rewards claimed
     }
 
@@ -644,29 +644,29 @@ contract StakerFullTest is Test {
         assertEq(nonRewardToken.balanceOf(address(staker)), 0);
     }
 
-    /* TEST: test_Sweep_DragonToken_RevertWhenRewardToken - - - - - - - - - - - /
-     * Tests that dragon token cannot be swept as it's a reward token - - - - */
-    function test_Sweep_DragonToken_RevertWhenRewardToken() public {
-        LogUtils.logDebug("Testing sweep dragon token reverts");
+    /* TEST: test_Sweep_stakingTokenToken_RevertWhenRewardToken - - - - - - - - - - - /
+     * Tests that stakingToken token cannot be swept as it's a reward token - - - - */
+    function test_Sweep_stakingTokenToken_RevertWhenRewardToken() public {
+        LogUtils.logDebug("Testing sweep stakingToken token reverts");
 
         // Alice stakes
         vm.prank(alice);
         staker.stake(alice, ALICE_STAKE, false);
 
-        // Send extra dragon tokens directly to staker
+        // Send extra stakingToken tokens directly to staker
         uint256 excessAmount = 1000 * 10 ** 18;
-        dragon.mint(address(staker), excessAmount);
+        stakingToken.mint(address(staker), excessAmount);
 
         address recipient = makeAddr("recipient");
 
-        // Dragon is a reward token, so sweep should revert
+        // stakingToken is a reward token, so sweep should revert
         vm.startPrank(owner);
         vm.expectRevert();
-        staker.sweep(IERC20(address(dragon)), recipient);
+        staker.sweep(IERC20(address(stakingToken)), recipient);
         vm.stopPrank();
 
         // Verify tokens remain in staker
-        assertEq(dragon.balanceOf(address(staker)), ALICE_STAKE + excessAmount);
+        assertEq(stakingToken.balanceOf(address(staker)), ALICE_STAKE + excessAmount);
     }
 
     /* TEST: test_Sweep_RevertWhenNotOwner - - - - - - - - - - - - - - - - - - -/
@@ -774,7 +774,7 @@ contract StakerFullTest is Test {
         // Send first batch of rewards
         uint256 firstReward = 3000 * 10 ** 18;
         rewardToken1.mint(address(staker), firstReward);
-        dragon.mint(address(staker), firstReward / 2); // Dragon rewards too
+        stakingToken.mint(address(staker), firstReward / 2); // stakingToken rewards too
 
         // Charlie stakes
         vm.prank(charlie);
@@ -816,23 +816,23 @@ contract StakerFullTest is Test {
 
         address[] memory emptyRewardTokens = new address[](0);
 
-        // Test dragon zero address
+        // Test stakingToken zero address
         vm.expectRevert(Staker.InvalidAddress.selector);
         new Staker(owner, address(0), treasury, DEFAULT_FEE, emptyRewardTokens);
 
         // Test treasury zero address
         vm.expectRevert(Staker.InvalidAddress.selector);
-        new Staker(owner, address(dragon), address(0), DEFAULT_FEE, emptyRewardTokens);
+        new Staker(owner, address(stakingToken), address(0), DEFAULT_FEE, emptyRewardTokens);
 
         // Test fee too high
         vm.expectRevert();
-        new Staker(owner, address(dragon), treasury, 91_00, emptyRewardTokens);
+        new Staker(owner, address(stakingToken), treasury, 91_00, emptyRewardTokens);
 
         // Test reward token zero address
         address[] memory invalidRewardTokens = new address[](1);
         invalidRewardTokens[0] = address(0);
         vm.expectRevert(Staker.InvalidAddress.selector);
-        new Staker(owner, address(dragon), treasury, DEFAULT_FEE, invalidRewardTokens);
+        new Staker(owner, address(stakingToken), treasury, DEFAULT_FEE, invalidRewardTokens);
     }
 
     /* TEST: test_ComputeDebtAccessHash - - - - - - - - - - - - - - - - - - - - /
@@ -840,10 +840,10 @@ contract StakerFullTest is Test {
     function test_ComputeDebtAccessHash() public view {
         LogUtils.logDebug("Testing computeDebtAccessHash function");
 
-        bytes32 hash1 = staker.computeDebtAccessHash(alice, 0, address(dragon));
+        bytes32 hash1 = staker.computeDebtAccessHash(alice, 0, address(stakingToken));
         bytes32 hash2 = staker.computeDebtAccessHash(alice, 0, address(rewardToken1));
-        bytes32 hash3 = staker.computeDebtAccessHash(alice, 1, address(dragon));
-        bytes32 hash4 = staker.computeDebtAccessHash(bob, 0, address(dragon));
+        bytes32 hash3 = staker.computeDebtAccessHash(alice, 1, address(stakingToken));
+        bytes32 hash4 = staker.computeDebtAccessHash(bob, 0, address(stakingToken));
 
         // All hashes should be different
         assertTrue(hash1 != hash2);
