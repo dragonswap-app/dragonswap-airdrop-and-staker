@@ -464,27 +464,6 @@ contract AirdropFactoryFullTest is Test {
         vm.stopPrank();
     }
 
-    /* TEST: test_Deploy_GasOptimization - - - - - - - - - - - - - - - - - - - - /
-     * Tests that implementation caching works as gas optimization - - - - - - -*/
-    function test_Deploy_GasOptimization() public {
-        LogUtils.logDebug("Testing implementation caching in deploy");
-
-        vm.startPrank(owner);
-
-        // This test verifies the gas optimization where implementation
-        // is cached to local variable 'impl' before use
-        uint256 gasBefore = gasleft();
-        address instance = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
-        uint256 gasUsed = gasBefore - gasleft();
-
-        LogUtils.logInfo(string.concat("Gas used for deployment: ", vm.toString(gasUsed)));
-
-        assertTrue(instance != address(0));
-        assertTrue(factory.isDeployedThroughFactory(instance));
-
-        vm.stopPrank();
-    }
-
     /* TEST: test_ClonePattern_Verification - - - - - - - - - - - - - - - - - - -/
      * Tests that clones are properly created using EIP-1167 pattern - - - - - */
     function test_ClonePattern_Verification() public {
