@@ -105,7 +105,7 @@ contract AirdropFullTest is Test {
 
     /* TEST: test_FactoryDeployment - - - - - - - - - - - - - - - - - - - - - - /
      * Tests the factory deployment functionality - - - - - - - - - - - - - - -*/
-    function test_FactoryDeployment() public {
+    function test_FactoryDeployment() public view {
         LogUtils.logDebug("Testing factory deployment");
 
         /* Check deployment count */
