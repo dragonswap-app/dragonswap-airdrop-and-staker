@@ -492,8 +492,8 @@ contract AirdropFactoryFullTest is Test {
         LogUtils.logInfo(string.concat("Clone 2 code size: ", vm.toString(codeSize2)));
 
         // Clone bytecode should be small (45 bytes for EIP-1167)
-        assertTrue(codeSize1 < 100);
-        assertTrue(codeSize2 < 100);
+        assertEq(codeSize1, 45);
+        assertEq(codeSize2, 45);
         assertEq(codeSize1, codeSize2);
 
         vm.stopPrank();
