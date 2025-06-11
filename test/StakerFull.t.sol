@@ -931,26 +931,59 @@ contract StakerFullTest is Test {
     function test_ComputeDebtAccessHash() public view {
         LogUtils.logDebug("Testing computeDebtAccessHash function");
 
-        bytes32 hash1 = staker.computeDebtAccessHash(alice, 0, address(stakingToken));
-        bytes32 hash2 = staker.computeDebtAccessHash(alice, 0, address(rewardToken1));
-        bytes32 hash3 = staker.computeDebtAccessHash(alice, 1, address(stakingToken));
-        bytes32 hash4 = staker.computeDebtAccessHash(bob, 0, address(stakingToken));
+        // Compute the debtHashBase that the staker uses
+        // debtHashBase = keccak256(abi.encode(block.chainid, address(staker)))
+        bytes32 debtHashBase = keccak256(abi.encode(block.chainid, address(staker)));
 
-        // All hashes should be different
-        // TODO: less loose check
+        // Test case 1: Alice, stake 0, stakingToken
+        bytes32 expectedHash1 = keccak256(abi.encodePacked(debtHashBase, alice, uint256(0), address(stakingToken)));
+        bytes32 actualHash1 = staker.computeDebtAccessHash(alice, 0, address(stakingToken));
+        assertEq(actualHash1, expectedHash1, "Hash1 computation incorrect");
 
-        assertNotEq(hash1, hash2, "hash1 should not equal hash2");
-        assertNotEq(hash1, hash3, "hash1 should not equal hash3");
-        assertNotEq(hash1, hash4, "hash1 should not equal hash4");
+        // Test case 2: Alice, stake 0, rewardToken1
+        bytes32 expectedHash2 = keccak256(abi.encodePacked(debtHashBase, alice, uint256(0), address(rewardToken1)));
+        bytes32 actualHash2 = staker.computeDebtAccessHash(alice, 0, address(rewardToken1));
+        assertEq(actualHash2, expectedHash2, "Hash2 computation incorrect");
 
-        assertNotEq(hash2, hash3, "hash2 should not equal hash3");
-        assertNotEq(hash2, hash4, "hash2 should not equal hash4");
+        // Test case 3: Alice, stake 1, stakingToken
+        bytes32 expectedHash3 = keccak256(abi.encodePacked(debtHashBase, alice, uint256(1), address(stakingToken)));
+        bytes32 actualHash3 = staker.computeDebtAccessHash(alice, 1, address(stakingToken));
+        assertEq(actualHash3, expectedHash3, "Hash3 computation incorrect");
 
-        assertNotEq(hash3, hash4, "hash3 should not equal hash4");
+        // Test case 4: Bob, stake 0, stakingToken
+        bytes32 expectedHash4 = keccak256(abi.encodePacked(debtHashBase, bob, uint256(0), address(stakingToken)));
+        bytes32 actualHash4 = staker.computeDebtAccessHash(bob, 0, address(stakingToken));
+        assertEq(actualHash4, expectedHash4, "Hash4 computation incorrect");
+
+        // Test case 5: High stake index
+        bytes32 expectedHash5 = keccak256(abi.encodePacked(debtHashBase, alice, uint256(999), address(stakingToken)));
+        bytes32 actualHash5 = staker.computeDebtAccessHash(alice, 999, address(stakingToken));
+        assertEq(actualHash5, expectedHash5, "High index hash computation incorrect");
+
+        // Test case 6: Zero address (edge case)
+        bytes32 expectedHash6 = keccak256(abi.encodePacked(debtHashBase, address(0), uint256(0), address(stakingToken)));
+        bytes32 actualHash6 = staker.computeDebtAccessHash(address(0), 0, address(stakingToken));
+        assertEq(actualHash6, expectedHash6, "Zero address hash computation incorrect");
+
+        // Verify all hashes are unique (collision resistance)
+        assertNotEq(actualHash1, actualHash2, "Different tokens should produce different hashes");
+        assertNotEq(actualHash1, actualHash3, "Different stake indices should produce different hashes");
+        assertNotEq(actualHash1, actualHash4, "Different users should produce different hashes");
+        assertNotEq(actualHash2, actualHash3, "Different token/index combinations should be unique");
+        assertNotEq(actualHash2, actualHash4, "Different user/token combinations should be unique");
+        assertNotEq(actualHash3, actualHash4, "Different user/index combinations should be unique");
+        assertNotEq(actualHash1, actualHash5, "Different indices should be unique");
+        assertNotEq(actualHash1, actualHash6, "Different addresses should be unique");
+
+        // Logs
+        LogUtils.logInfo(string.concat("Chain ID: ", vm.toString(block.chainid)));
+        LogUtils.logInfo(string.concat("Staker address: ", vm.toString(address(staker))));
+        LogUtils.logInfo(string.concat("Computed debtHashBase: ", vm.toString(debtHashBase)));
+        LogUtils.logInfo(string.concat("Sample hash (Alice, 0, stakingToken): ", vm.toString(actualHash1)));
     }
-
     /* TEST: test_ComputeDebtAccessHash_RealScenario - - - - - - - - - - - - - -/
      * Tests debt hash computation aligns with hash map keys in real scenario- -*/
+
     function test_ComputeDebtAccessHash_RealScenario() public {
         LogUtils.logDebug("Testing computeDebtAccessHash in real scenario");
 
