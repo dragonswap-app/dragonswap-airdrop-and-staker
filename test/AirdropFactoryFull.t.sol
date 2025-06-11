@@ -7,6 +7,7 @@ import {AirdropFactory} from "src/AirdropFactory.sol";
 import {Staker} from "src/Staker.sol";
 import {LogUtils} from "test/utils/LogUtils.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /* TODO: Convert startPrank to prank where applicable */
 /* TODO: Clean up the comments                        */
@@ -197,14 +198,13 @@ contract AirdropFactoryFullTest is Test {
         vm.stopPrank();
     }
 
-    /* TEST: test_Deploy_RevertWhenNotOwner - - - - - - - - - - - - - - - - - - -/
+    /* TEST: test_Deploy_RevertWhenNotOwner - - - - - - - - - - - - - - - - - - /
      * Tests that only owner can deploy new instances - - - - - - - - - - - - -*/
     function test_Deploy_RevertWhenNotOwner() public {
         LogUtils.logDebug("Testing deploy revert when not owner");
 
         vm.startPrank(notOwner);
-
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notOwner));
         factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
 
         vm.stopPrank();
