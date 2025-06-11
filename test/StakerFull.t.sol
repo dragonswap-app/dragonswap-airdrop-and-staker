@@ -753,7 +753,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_Sweep_RevertWhenNotOwner - - - - - - - - - - - - - - - - - - -/
-     * Tests that only owner can sweep - - - - - - - - - - - - - - - - - - - - */
+    * Tests that only owner can sweep - - - - - - - - - - - - - - - - - - - - */
     function test_Sweep_RevertWhenNotOwner() public {
         LogUtils.logDebug("Testing sweep revert when not owner");
 
@@ -766,7 +766,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_Sweep_RevertWhenRewardToken - - - - - - - - - - - - - - - - - /
-     * Tests that reward tokens cannot be swept - - - - - - - - - - - - - - - -*/
+    * Tests that reward tokens cannot be swept - - - - - - - - - - - - - - - -*/
     function test_Sweep_RevertWhenRewardToken() public {
         LogUtils.logDebug("Testing sweep revert when reward token");
 
@@ -777,7 +777,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_Sweep_RevertWhenNoBalance - - - - - - - - - - - - - - - - - - /
-     * Tests that sweep reverts when no balance to sweep - - - - - - - - - - -*/
+    * Tests that sweep reverts when no balance to sweep - - - - - - - - - - -*/
     function test_Sweep_RevertWhenNoBalance() public {
         LogUtils.logDebug("Testing sweep revert when no balance");
 
@@ -830,7 +830,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_PendingRewards_RevertWhenInvalidToken - - - - - - - - - - - - /
-     * Tests that pendingRewards reverts for non-reward tokens - - - - - - - -*/
+    * Tests that pendingRewards reverts for non-reward tokens - - - - - - - -*/
     function test_PendingRewards_RevertWhenInvalidToken() public {
         LogUtils.logDebug("Testing pendingRewards revert when invalid token");
 
@@ -842,7 +842,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_ComplexScenario_MultipleUsersAndRewards - - - - - - - - - - - /
-     * Tests complex scenario with multiple users and reward distributions - - -*/
+    * Tests complex scenario with multiple users and reward distributions - - -*/
     function test_ComplexScenario_MultipleUsersAndRewards() public {
         LogUtils.logDebug("Testing complex scenario with multiple users and rewards");
 
@@ -893,7 +893,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_ExactRewardDistribution_ThreeUsers - - - - - - - - - - - - - -/
-     * Tests exact reward calculations for three users with different stakes - -*/
+    * Tests exact reward calculations for three users with different stakes - -*/
     function test_ExactRewardDistribution_ThreeUsers() public {
         LogUtils.logDebug("Testing exact reward distribution for three users");
 
@@ -948,7 +948,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_Constructor_RevertConditions - - - - - - - - - - - - - - - - -/
-     * Tests constructor revert conditions - - - - - - - - - - - - - - - - - - */
+    * Tests constructor revert conditions - - - - - - - - - - - - - - - - - - */
     function test_Constructor_RevertConditions() public {
         LogUtils.logDebug("Testing constructor revert conditions");
 
@@ -974,7 +974,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_ComputeDebtAccessHash - - - - - - - - - - - - - - - - - - - - /
-     * Tests the computeDebtAccessHash function - - - - - - - - - - - - - - - -*/
+    * Tests the computeDebtAccessHash function - - - - - - - - - - - - - - - -*/
     function test_ComputeDebtAccessHash() public view {
         LogUtils.logDebug("Testing computeDebtAccessHash function");
 
@@ -984,9 +984,16 @@ contract StakerFullTest is Test {
         bytes32 hash4 = staker.computeDebtAccessHash(bob, 0, address(stakingToken));
 
         // All hashes should be different
-        assertTrue(hash1 != hash2);
-        assertTrue(hash1 != hash3);
-        assertTrue(hash1 != hash4);
+        // TODO: less loose check
+
+        assertNotEq(hash1, hash2, "hash1 should not equal hash2");
+        assertNotEq(hash1, hash3, "hash1 should not equal hash3");
+        assertNotEq(hash1, hash4, "hash1 should not equal hash4");
+
+        assertNotEq(hash2, hash3, "hash2 should not equal hash3");
+        assertNotEq(hash2, hash4, "hash2 should not equal hash4");
+
+        assertNotEq(hash3, hash4, "hash3 should not equal hash4");
     }
 
     /* TEST: test_ComputeDebtAccessHash_RealScenario - - - - - - - - - - - - - -/
@@ -1031,7 +1038,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_GetAccountStakeData_RevertWhenInvalidIndex - - - - - - - - - -/
-     * Tests getAccountStakeData reverts with invalid index - - - - - - - - - -*/
+    * Tests getAccountStakeData reverts with invalid index - - - - - - - - - -*/
     function test_GetAccountStakeData_RevertWhenInvalidIndex() public {
         LogUtils.logDebug("Testing getAccountStakeData revert when invalid index");
 
@@ -1040,7 +1047,7 @@ contract StakerFullTest is Test {
     }
 
     /* TEST: test_GetAccountStakeData_RevertWhenInvalidIndex_ExistingStake - - -/
-     * Tests getAccountStakeData reverts on existing stake with invalid index -*/
+    * Tests getAccountStakeData reverts on existing stake with invalid index -*/
     function test_GetAccountStakeData_RevertWhenInvalidIndex_ExistingStake() public {
         LogUtils.logDebug("Testing getAccountStakeData revert on existing stake with invalid index");
 
