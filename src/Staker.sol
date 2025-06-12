@@ -204,7 +204,8 @@ contract Staker is Ownable {
         for (uint256 i; i < numberOfStakeIndexes; ++i) {
             uint256 stakeIndex = stakeIndexes[i];
             if (stakeIndex >= stakeCount) revert InvalidStakeIndex();
-            uint256 amount = _stakes[stakeIndex].amount;
+            Stake memory _stake = _stakes[stakeIndex];
+            if (_stake.claimed) revert AlreadyClaimed();
             uint256 numberOfRewardTokens = rewardTokens.length;
 
             for (uint256 j; j < numberOfRewardTokens; ++j) {
@@ -214,7 +215,7 @@ contract Staker is Ownable {
                 bytes32 rewardDebtHash = computeDebtAccessHash(msg.sender, stakeIndex, token);
 
                 uint256 _accRewardsPerShare = accRewardsPerShare[token];
-                uint256 accumulated = (amount * _accRewardsPerShare) / accPrecision;
+                uint256 accumulated = (_stake.amount * _accRewardsPerShare) / accPrecision;
                 uint256 pending = accumulated - rewardDebt[rewardDebtHash];
                 rewardDebt[rewardDebtHash] = accumulated;
 
