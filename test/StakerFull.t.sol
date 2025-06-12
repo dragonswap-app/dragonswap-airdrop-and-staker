@@ -1153,6 +1153,7 @@ contract StakerFullTest is Test {
 
         // Charlie tries to claim again - should get 0 more rewards
         vm.prank(charlie);
+        vm.expectRevert(Staker.AlreadyClaimed.selector);
         staker.claimEarnings(stakeIndexes);
 
         assertEq(rewardToken1.balanceOf(charlie), charlieBalance, "Should not claim additional rewards");
@@ -1188,6 +1189,7 @@ contract StakerFullTest is Test {
 
         // Charlie should get 0 new rewards
         vm.prank(charlie);
+        vm.expectRevert(Staker.AlreadyClaimed.selector);
         staker.claimEarnings(stakeIndexes);
         assertEq(rewardToken1.balanceOf(charlie), 0, "Charlie should get no new rewards after withdrawal");
     }

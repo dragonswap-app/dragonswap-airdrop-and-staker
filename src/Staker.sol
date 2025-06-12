@@ -31,7 +31,7 @@ contract Staker is Ownable {
     /// @notice Reward debt per token per user's stake
     mapping(bytes32 stakeHash => uint256) private rewardDebt;
 
-    /// @notice stakingToken address
+    /// @notice stakingToken token address
     IERC20 public immutable stakingToken;
     /// @notice Base of a `stakeHash` - used to retrieve `rewardDebt``
     bytes32 private immutable debtHashBase = keccak256(abi.encode(block.chainid, address(this)));
@@ -80,7 +80,7 @@ contract Staker is Ownable {
         emit TreasurySet(_treasury);
 
         // Optional
-        if (_fee > feePrecision * 9 / 10) revert();
+        if (_fee > feePrecision * 9 / 10) revert InvalidValue();
         fee = _fee;
         emit FeeSet(_fee);
 
@@ -204,7 +204,8 @@ contract Staker is Ownable {
         for (uint256 i; i < numberOfStakeIndexes; ++i) {
             uint256 stakeIndex = stakeIndexes[i];
             if (stakeIndex >= stakeCount) revert InvalidStakeIndex();
-            uint256 amount = _stakes[stakeIndex].amount;
+            Stake memory _stake = _stakes[stakeIndex];
+            if (_stake.claimed) revert AlreadyClaimed();
             uint256 numberOfRewardTokens = rewardTokens.length;
 
             for (uint256 j; j < numberOfRewardTokens; ++j) {
@@ -214,7 +215,7 @@ contract Staker is Ownable {
                 bytes32 rewardDebtHash = computeDebtAccessHash(msg.sender, stakeIndex, token);
 
                 uint256 _accRewardsPerShare = accRewardsPerShare[token];
-                uint256 accumulated = (amount * _accRewardsPerShare) / accPrecision;
+                uint256 accumulated = (_stake.amount * _accRewardsPerShare) / accPrecision;
                 uint256 pending = accumulated - rewardDebt[rewardDebtHash];
                 rewardDebt[rewardDebtHash] = accumulated;
 
