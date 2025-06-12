@@ -1068,9 +1068,154 @@ contract StakerFullTest is Test {
         vm.prank(alice);
         staker.withdraw(stakeIndexes);
 
-        // Should still be able to access withdrawn stake data (it's marked as claimed)
         (uint256 amount, uint256 unlockTimestamp,) = staker.getAccountStakeData(alice, 1);
         assertEq(amount, ALICE_STAKE);
         assertGt(unlockTimestamp, 0);
+    }
+
+    function _stake(address user, uint256 amount, bool isLocked) internal {
+        vm.prank(user);
+        stakingToken.approve(address(staker), amount);
+        vm.prank(user);
+        staker.stake(user, amount, isLocked);
+    }
+    /* TEST: test_ClaimEarnings_AfterWithdraw_ShouldRevert - - - - - - - - - - -/
+    * Should revert when claiming on withdrawn stake - FAILS due to exploit - */
+
+    function test_ClaimEarnings_AfterWithdraw_ShouldRevert() public {
+        LogUtils.logDebug("Testing claim should revert on withdrawn stake");
+
+        // Alice stakes locked, Charlie stakes unlocked
+        vm.prank(alice);
+        staker.stake(alice, ALICE_STAKE, true);
+        vm.prank(charlie);
+        staker.stake(charlie, CHARLIE_STAKE, false);
+
+        // Charlie withdraws
+        uint256[] memory stakeIndexes = new uint256[](1);
+        stakeIndexes[0] = 0;
+        vm.prank(charlie);
+        staker.withdraw(stakeIndexes);
+
+        // Add rewards
+        rewardToken1.mint(address(staker), 1_000 * 10 ** 18);
+
+        vm.prank(charlie);
+        vm.expectRevert(Staker.AlreadyClaimed.selector);
+        staker.claimEarnings(stakeIndexes);
+    }
+
+    /* TEST: test_WithdrawnStake_ShouldNotAccumulateRewards - - - - - - - - - - /
+    * Withdrawn stakes should show 0 pending - FAILS due to exploit - - - - -*/
+    function test_WithdrawnStake_ShouldNotAccumulateRewards() public {
+        LogUtils.logDebug("Testing withdrawn stake should not accumulate rewards");
+
+        // Charlie stakes and withdraws
+        vm.prank(charlie);
+        staker.stake(charlie, CHARLIE_STAKE, false);
+
+        uint256[] memory stakeIndexes = new uint256[](1);
+        stakeIndexes[0] = 0;
+        vm.prank(charlie);
+        staker.withdraw(stakeIndexes);
+
+        // Add rewards after withdrawal
+        rewardToken1.mint(address(staker), 1_000 * 10 ** 18);
+
+        // Pending rewards should be 0 for withdrawn stake
+        uint256 charliePending = staker.pendingRewards(charlie, 0, address(rewardToken1));
+        assertEq(charliePending, 0, "Withdrawn stake should not show pending rewards");
+    }
+
+    /* TEST: test_CannotClaimTwiceOnSameRewards - - - - - - - - - - - - - - - - /
+    * Should not allow claiming more than fair share - FAILS due to exploit - */
+    function test_CannotClaimTwiceOnSameRewards() public {
+        LogUtils.logDebug("Testing cannot claim twice on same rewards");
+
+        uint256 rewardAmount = 1_000 * 10 ** 18;
+
+        // Both stake equal amounts
+        vm.prank(alice);
+        staker.stake(alice, ALICE_STAKE, true);
+        vm.prank(charlie);
+        staker.stake(charlie, ALICE_STAKE, false);
+
+        // Add rewards
+        rewardToken1.mint(address(staker), rewardAmount);
+
+        // Charlie withdraws (should get 50% rewards)
+        uint256[] memory stakeIndexes = new uint256[](1);
+        stakeIndexes[0] = 0;
+        vm.prank(charlie);
+        staker.withdraw(stakeIndexes);
+
+        uint256 charlieBalance = rewardToken1.balanceOf(charlie);
+
+        // Charlie tries to claim again - should get 0 more rewards
+        vm.prank(charlie);
+        staker.claimEarnings(stakeIndexes);
+
+        assertEq(rewardToken1.balanceOf(charlie), charlieBalance, "Should not claim additional rewards");
+    }
+
+    /* TEST: test_FairRewardDistribution_AfterWithdraw - - - - - - - - - - - - -/
+    * Alice should get all rewards after Charlie withdraws - FAILS - - - - - -*/
+    function test_FairRewardDistribution_AfterWithdraw() public {
+        LogUtils.logDebug("Testing fair reward distribution after withdrawal");
+
+        // Both stake
+        vm.prank(alice);
+        staker.stake(alice, ALICE_STAKE, true);
+        vm.prank(charlie);
+        staker.stake(charlie, ALICE_STAKE, false);
+
+        // Charlie withdraws immediately
+        uint256[] memory stakeIndexes = new uint256[](1);
+        stakeIndexes[0] = 0;
+        vm.prank(charlie);
+        staker.withdraw(stakeIndexes);
+
+        // Add rewards - should only go to Alice now
+        uint256 rewardAmount = 1_000 * 10 ** 18;
+        rewardToken1.mint(address(staker), rewardAmount);
+
+        // Alice claims
+        vm.prank(alice);
+        staker.claimEarnings(stakeIndexes);
+
+        // Alice should get ALL rewards since Charlie withdrew
+        assertEq(rewardToken1.balanceOf(alice), rewardAmount, "Alice should get all rewards");
+
+        // Charlie should get 0 new rewards
+        vm.prank(charlie);
+        staker.claimEarnings(stakeIndexes);
+        assertEq(rewardToken1.balanceOf(charlie), 0, "Charlie should get no new rewards after withdrawal");
+    }
+
+    /* TEST: test_MultipleWithdrawn_CannotClaim - - - - - - - - - - - - - - - - /
+    * Multiple withdrawn stakes should not claim - FAILS due to exploit - - - */
+    function test_MultipleWithdrawn_CannotClaim() public {
+        LogUtils.logDebug("Testing multiple withdrawn stakes cannot claim");
+
+        // Charlie creates and withdraws 3 stakes
+        uint256[] memory stakeIndexes = new uint256[](3);
+        stakeIndexes[0] = 0;
+        stakeIndexes[1] = 1;
+        stakeIndexes[2] = 2;
+
+        vm.startPrank(charlie);
+        staker.stake(charlie, ALICE_STAKE, false);
+        staker.stake(charlie, ALICE_STAKE, false);
+        staker.stake(charlie, ALICE_STAKE, false);
+        staker.withdraw(stakeIndexes);
+        vm.stopPrank();
+
+        // Add rewards after withdrawal
+        rewardToken1.mint(address(staker), 3_000 * 10 ** 18);
+
+        // Should revert when claiming on withdrawn stakes
+        vm.prank(charlie);
+        vm.expectRevert(Staker.AlreadyClaimed.selector);
+        staker.claimEarnings(stakeIndexes);
     }
 }
