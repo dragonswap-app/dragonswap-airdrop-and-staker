@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
@@ -40,6 +40,9 @@ contract StakerTest is Test {
         uint256 rewardAmount = 100e18;
         stakingToken.approve(address(staker), stakeAmount);
         staker.stake(address(this), stakeAmount, true);
+
+        // The earliest possible time the stake can be withdrawn
+        vm.warp(block.timestamp + 30 days);
 
         assertEq(staker.pendingRewards(address(this), 0, address(rewardToken)), 0);
 
