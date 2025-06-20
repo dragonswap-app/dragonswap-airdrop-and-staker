@@ -24,9 +24,6 @@ contract DeployAirdrop is BaseDeployScript {
         // uint256 timestampCount = vm.parseJsonUint(config, string.concat(".airdrop", ".unlockTimestamps"));
         uint256[] memory timestamps;
         timestamps = vm.parseJsonUintArray(config, ".airdrop.unlockTimestamps");
-        console2.log("Timestamp length:", timestamps.length);
-        console2.log("Timestamp 1:", timestamps[0]);
-        console2.log("Timestamp 2:", timestamps[1]);
 
         vm.startBroadcast();
 
@@ -36,10 +33,10 @@ contract DeployAirdrop is BaseDeployScript {
 
         vm.stopBroadcast();
 
-        string memory addressKey = "airdrop.";
+        string memory addressKey = "airdrop";
         saveAddress(addressKey, instance);
 
-        console2.log("Deployed Airdrop (%s) at:", ".airdrops", instance);
+        console2.log("Deployed Airdrop (%s) at:", ".airdrop", instance);
         return instance;
     }
 }
