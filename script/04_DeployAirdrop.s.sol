@@ -14,14 +14,12 @@ contract DeployAirdrop is BaseDeployScript {
         address stakerAddress = getAddress("staker");
 
         // Parse airdrop configuration
-
         address owner = vm.parseJsonAddress(config, ".airdrop.owner");
         address token = vm.parseJsonAddress(config, ".airdrop.token");
         address treasury = vm.parseJsonAddress(config, ".airdrop.treasury");
         address signer = vm.parseJsonAddress(config, ".airdrop.signer");
 
         // Parse unlock timestamps
-        // uint256 timestampCount = vm.parseJsonUint(config, string.concat(".airdrop", ".unlockTimestamps"));
         uint256[] memory timestamps;
         timestamps = vm.parseJsonUintArray(config, ".airdrop.unlockTimestamps");
 

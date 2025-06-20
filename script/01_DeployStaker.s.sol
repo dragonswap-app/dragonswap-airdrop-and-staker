@@ -14,7 +14,6 @@ contract DeployStaker is BaseDeployScript {
         string memory config = loadConfig();
 
         // Parse staker configuration
-
         address owner = vm.parseJsonAddress(config, ".staker.owner");
         LogUtils.logInfo(string.concat("Owner set to ", vm.toString(owner)));
 
@@ -27,18 +26,8 @@ contract DeployStaker is BaseDeployScript {
         uint256 fee = vm.parseJsonUint(config, ".staker.fee");
         LogUtils.logInfo(string.concat("Fee set to ", vm.toString(fee)));
 
-        // Parse reward tokens array
-        // address[] memory rewardTokens = new address[](0);
-        // try vm.parseJsonUint(config, ".staker.rewardTokens.length") returns (uint256 length) {
-        //     rewardTokens = new address[](length);
-        //     for (uint256 i = 0; i < length; i++) {
-        //         rewardTokens[i] =
-        //             vm.parseJsonAddress(config, string.concat(".staker.rewardTokens[", vm.toString(i), "]"));
-        //         LogUtils.logInfo(string.concat("\t[+] reward token -> ", vm.toString(rewardTokens[i])));
-        //     }
-        // } catch {}
-        //
         address[] memory rewardTokens = vm.parseJsonAddressArray(config, ".staker.rewardTokens");
+
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             LogUtils.logInfo(
                 string.concat("[+] Reward token [#", vm.toString(i), "] --> ", vm.toString(rewardTokens[i]))

@@ -29,16 +29,18 @@ contract DeployAll is BaseDeployScript {
 
         // Step 3: Deploy Factory (modified to use deployer as initial owner)
         LogUtils.logInfo("=== Step 3: Deploying Factory ===");
+
         factoryAddress = deployFactoryWithDeployerOwner(airdropImplAddress);
 
         // Step 4: Deploy Airdrop Instance (while deployer owns factory)
+
         LogUtils.logInfo("=== Step 4: Deploying Airdrop Instance ===");
         DeployAirdrop airdropDeployer = new DeployAirdrop();
         airdropAddress = airdropDeployer.run();
 
-        // Step 5: Transfer factory ownership to target address
-        LogUtils.logInfo("=== Step 5: Transferring Factory Ownership ===");
-        transferFactoryOwnership(factoryAddress);
+        // Step 5: Optional: Transfer factory ownership after deployment
+        // LogUtils.logInfo("=== Step 5: Transferring Factory Ownership ===");
+        // transferFactoryOwnership(factoryAddress);
 
         LogUtils.logSuccess("=== Full deployment completed successfully! ===");
         LogUtils.logInfo(string.concat("Staker: ", vm.toString(stakerAddress)));
@@ -50,7 +52,6 @@ contract DeployAll is BaseDeployScript {
     }
 
     function deployFactoryWithDeployerOwner(address implementation) internal returns (address) {
-        string memory config = loadConfig();
         LogUtils.logInfo("Deploying AirdropFactory with deployer as initial owner...");
 
         address currentDeployer = msg.sender;

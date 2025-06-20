@@ -101,7 +101,7 @@ abstract contract BaseDeployScript is Script {
         string memory json = loadAddresses();
 
         // Try new format first
-        try vm.parseJsonAddress(json, string.concat(".addresses.", key)) returns (address addr) {
+        try vm.parseJsonAddress(json, string.concat(".", key)) returns (address addr) {
             return addr;
         } catch {
             // Try legacy format
@@ -116,7 +116,7 @@ abstract contract BaseDeployScript is Script {
     function hasAddress(string memory key) internal view returns (bool) {
         try vm.readFile(ADDRESSES_PATH) returns (string memory json) {
             // Try new format first
-            try vm.parseJsonAddress(json, string.concat(".addresses.", key)) returns (address) {
+            try vm.parseJsonAddress(json, string.concat(".", key)) returns (address) {
                 return true;
             } catch {
                 // Try legacy format
