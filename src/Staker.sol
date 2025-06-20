@@ -43,6 +43,8 @@ contract Staker is Ownable {
     uint256 private constant feePrecision = 1_00_00;
     /// @notice Minimum amount needed to make a deposit
     uint256 private constant minimumDeposit = 100e18;
+    /// @notice Maximum value to set as a fee - 90%
+    uint256 private constant MAX_FEE = 90_00;
 
     /// Events
     event Deposit(address indexed funder, address indexed account, uint256 amount, bool indexed locked);
@@ -80,7 +82,7 @@ contract Staker is Ownable {
         emit TreasurySet(_treasury);
 
         // Optional
-        if (_fee > feePrecision * 9 / 10) revert InvalidValue();
+        if (_fee > MAX_FEE) revert InvalidValue();
         fee = _fee;
         emit FeeSet(_fee);
 
@@ -113,7 +115,7 @@ contract Staker is Ownable {
      * @param _fee New fee value to be set.
      */
     function setFee(uint256 _fee) external onlyOwner {
-        if (_fee > feePrecision * 9 / 10) revert InvalidValue();
+        if (_fee > MAX_FEE) revert InvalidValue();
         fee = _fee;
         emit FeeSet(_fee);
     }
