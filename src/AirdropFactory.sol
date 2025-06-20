@@ -15,6 +15,7 @@ contract AirdropFactory is Ownable {
     // Errors
     error ImplementationNotSet();
     error CloneCreationFailed();
+    error CloneInitializationFailed();
     error InvalidIndexRange();
 
     constructor(address _implementation, address initialOwner) Ownable(initialOwner) {
@@ -71,7 +72,7 @@ contract AirdropFactory is Ownable {
 
         // Initialize / fund with native coins
         (bool success,) = instance.call(data);
-        if (!success) revert();
+        if (!success) revert CloneInitializationFailed();
 
         // Push instance to deployments
         deployments.push(instance);
