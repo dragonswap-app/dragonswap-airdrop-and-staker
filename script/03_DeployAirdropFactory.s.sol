@@ -9,21 +9,30 @@ contract DeployFactory is BaseDeployScript {
     function run() public returns (address factoryAddress) {
         string memory config = loadConfig();
 
-        // Get required addresses
-        address implementation = getAddress("airdropImpl");
+        address implementation;
+        address airdropImplAddr = address(0x0);
+
+        if (hasAddress("airdropImpl")) {
+            implementation = getAddress("airdropImpl");
+            LogUtils.logInfo(string.concat("Using existing airdropImpl address: ", vm.toString(airdropImplAddr)));
+        } else {
+            LogUtils.logInfo(
+                string.concat(
+                    "No previous AirdropImpl detected. Setting factory's airdropImpl address to zero address: "
+                )
+            );
+        }
+
         address owner = vm.parseJsonAddress(config, ".factory.owner");
 
         vm.startBroadcast();
-
-        // Deploy Factory
         AirdropFactory factory = new AirdropFactory(implementation, owner);
-
         vm.stopBroadcast();
 
         factoryAddress = address(factory);
         saveAddress("factory", factoryAddress);
 
-        LogUtils.logSuccess(string.concat("Deployed AirdropFactory at:", vm.toString(factoryAddress)));
+        LogUtils.logSuccess(string.concat("Deployed AirdropFactory to ", vm.toString(factoryAddress)));
         return factoryAddress;
     }
 }
