@@ -199,7 +199,7 @@ contract Staker is Ownable {
     function claimEarnings(uint256[] calldata stakeIndexes) external {
         uint256 numberOfStakeIndexes = stakeIndexes.length;
         uint256 stakeCount = userStakeCount(msg.sender);
-        Stake[] memory _stakes = stakes[msg.sender];
+        Stake[] storage _stakes = stakes[msg.sender];
 
         for (uint256 i; i < numberOfStakeIndexes; ++i) {
             uint256 stakeIndex = stakeIndexes[i];
