@@ -16,7 +16,8 @@ Users can claim airdropped tokens either directly to their wallet (with penalty)
 
 ## Deployment configuration
 
-> [!NOTE] Below is `script/config/deploy-config.json`
+> [!NOTE]
+> Below is `script/config/deploy-config.json`
 > From now-on we will be calling it `deploy-config.json`
 
 
@@ -45,7 +46,8 @@ This JSON formatted file is the primary configuration point for the deploy scrip
 
 
 
-> [!NOTE] Below is `script/config/deployed-addresses.json`
+> [!NOTE] 
+> Below is `script/config/deployed-addresses.json`
 > From now-on we will be calling it `deployed-addresses.json`
 
 After each deploy, the `deployed-addresses.json` is populated with the newly acquired deployed addresses.
@@ -62,7 +64,8 @@ After each deploy, the `deployed-addresses.json` is populated with the newly acq
 
 ## Deploying the staker
 
-> [!TIP] Below is the code that explains the way that fee parameter for the staker is used in calculating fees.
+> [!TIP] 
+> Below is the code that explains the way that fee parameter for the staker is used in calculating fees.
 > Please do your dilligence and study it thorougly.
 
 
@@ -85,7 +88,8 @@ TODO
 ***
 
 ## Using the scripts
-> [!TIP] You may use the scripts for ease of deployment. The environment variables the scripts use from .env are
+> [!TIP] 
+> You may use the scripts for ease of deployment. The environment variables the scripts use from .env are
 > 
 > DEFAULT_RPC_URL
 > DEFAULT_SENDER
