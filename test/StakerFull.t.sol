@@ -1220,4 +1220,59 @@ contract StakerFullTest is Test {
         vm.expectRevert(Staker.AlreadyClaimed.selector);
         staker.claimEarnings(stakeIndexes);
     }
+
+    /* TEST: test_ClaimEarnings_GasIncrease_WithManyStakes - - - - - - - - - - -/
+     * Tests gas consumption increase in claimEarnings with many stakes - - - -*/
+    function test_ClaimEarnings_GasIncrease_WithManyStakes() public {
+        LogUtils.logDebug("Testing gas increase in claimEarnings with many stakes");
+
+        // Mint additional tokens for gas test
+        stakingToken.mint(alice, ALICE_STAKE * 5000);
+        stakingToken.mint(bob, BOB_STAKE * 5000);
+
+        uint256 stakeCount = 3000;
+        uint256 stakeAmount = 100 * 10 ** 18;
+        uint256 rewardPerRound = 1000 * 10 ** 18;
+
+        LogUtils.logInfo(string.concat("Creating ", vm.toString(stakeCount), " stakes to test gas consumption"));
+
+        for (uint256 i = 0; i < stakeCount; i++) {
+            // Alice stakes
+            vm.prank(alice);
+            staker.stake(alice, stakeAmount, false);
+
+            // Bob stakes
+            vm.prank(bob);
+            staker.stake(bob, stakeAmount, false);
+
+            // Distribute rewards
+            rewardToken1.mint(address(staker), rewardPerRound);
+
+            // Measure gas on final iteration
+            if (i == stakeCount - 1) {
+                uint256[] memory stakeIndexes = new uint256[](1);
+                stakeIndexes[0] = 0; // Claim only first stake
+
+                uint256 gasBefore = gasleft();
+                vm.prank(alice);
+                staker.claimEarnings(stakeIndexes);
+                uint256 gasUsed = gasBefore - gasleft();
+
+                LogUtils.logInfo(
+                    string.concat(
+                        "Gas used for claimEarnings with ",
+                        vm.toString(stakeCount),
+                        " total stakes: ",
+                        vm.toString(gasUsed)
+                    )
+                );
+
+                // Assert reasonable gas consumption
+                // This test may fail if there's a gas DoS vulnerability
+                assertLt(gasUsed, 1_000_000, "Gas leak - potential DoS vulnerability");
+            }
+        }
+
+        LogUtils.logInfo("Gas consumption test completed");
+    }
 }
