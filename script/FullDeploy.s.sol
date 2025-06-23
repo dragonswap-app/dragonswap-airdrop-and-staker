@@ -58,7 +58,7 @@ contract DeployAll is BaseDeployScript {
 
         vm.startBroadcast();
 
-        // Deploy Factory with deployer as initial owner (we'll transfer later)
+        // Deploy Factory with deployer as initial owner (transfer may be done later)
         AirdropFactory factory = new AirdropFactory(implementation, currentDeployer);
         address factoryAddr = address(factory);
 
