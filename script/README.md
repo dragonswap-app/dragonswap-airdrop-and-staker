@@ -1,5 +1,5 @@
 
-# Dragonswap Token Release Kit scripts
+# Dragonswap Token Release Kit script
 
 ## 🎯 System Overview
 
