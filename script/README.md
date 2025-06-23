@@ -92,7 +92,9 @@ TODO
 > You may use the scripts for ease of deployment. The environment variables the scripts use from .env are
 > 
 > DEFAULT_RPC_URL
+>
 > DEFAULT_SENDER
+>
 > DEFAULT_PRIVATE_KEY
 
 Currently, 2 bash scripts are available in the project root.
