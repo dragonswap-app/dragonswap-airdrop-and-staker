@@ -269,7 +269,7 @@ contract Staker is Ownable {
             // If user hasn't locked, penalty will be applied and redistributed to the active stakers.
             uint256 feeAmount;
             if (_stake.unlockTimestamp == 0) {
-                feeAmount = amount * fee / feePrecision;
+                feeAmount = computeFeeAmount(amount);
                 amount -= feeAmount;
                 stakingToken.safeTransfer(treasury, feeAmount);
             }
@@ -301,7 +301,7 @@ contract Staker is Ownable {
 
             uint256 feeAmount;
             if (_stake.unlockTimestamp == 0) {
-                feeAmount = amount * fee / feePrecision;
+                feeAmount = computeFeeAmount(amount);
                 amount -= feeAmount;
                 stakingToken.safeTransfer(treasury, feeAmount);
             }
@@ -400,6 +400,13 @@ contract Staker is Ownable {
      */
     function rewardTokensCounter() public view returns (uint256) {
         return rewardTokens.length;
+    }
+
+    /**
+     * @notice Function to apply fee to the provided amount.
+     */
+    function computeFeeAmount(uint256 amount) public view returns (uint256) {
+        return amount * fee / feePrecision;
     }
 
     /**
