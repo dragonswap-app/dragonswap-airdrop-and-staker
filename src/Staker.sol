@@ -343,6 +343,9 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         uint256 _totalDeposits = totalDeposits;
         uint256 _accRewardTokenPerShare = accRewardsPerShare[token];
 
+        Stake memory _stake = stakes[account][stakeIndex];
+        if (_stake.claimed) return 0;
+
         uint256 currRewardBalance = IERC20(token).balanceOf(address(this));
         uint256 rewardBalance = token == address(stakingToken) ? currRewardBalance - _totalDeposits : currRewardBalance;
 
@@ -350,7 +353,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
             uint256 accruedReward = rewardBalance - lastRewardBalance[token];
             _accRewardTokenPerShare += (accruedReward * accPrecision) / _totalDeposits;
         }
-        return (stakes[account][stakeIndex].amount * _accRewardTokenPerShare) / accPrecision
+        return (_stake.amount * _accRewardTokenPerShare) / accPrecision
             - rewardDebt[computeDebtAccessHash(account, stakeIndex, token)];
     }
 
