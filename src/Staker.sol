@@ -10,7 +10,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
 
     struct Stake {
         uint256 amount;
-        uint256 unlockTimestamp;
+        uint64 unlockTimestamp;
         bool claimed;
     }
 
@@ -60,6 +60,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     event FeeSet(uint256 fee);
 
     /// Errors
+    error CannotSweepRewardToken();
     error InvalidAddress();
     error InvalidValue();
     error ZeroAddress();
@@ -130,8 +131,12 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     }
 
     /**
-     * @notice Deposit stakingToken in order to receive the reward tokens
-     * @param amount The amount of stakingToken to deposit
+     * @notice Deposit stakingToken in order to receive the reward tokens.
+     * @param account is an account to create a stake for.
+     * @param amount The amount of stakingToken to deposit.
+     * @param locking is determining if the stake is locked from the start.
+     * @dev locking a stake will result in making it unwithdrawable for a `lockTimespan` period of time
+     * and disable the withdrwal fee (for that individual stake only).
      */
     function stake(address account, uint256 amount, bool locking) external nonReentrant {
         if (account == address(0)) revert ZeroAddress();
@@ -151,7 +156,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
 
         // Add the stake
         stakes[account].push(
-            Stake({amount: amount, unlockTimestamp: locking ? block.timestamp + lockTimespan : 0, claimed: false})
+            Stake({amount: amount, unlockTimestamp: locking ? uint64(block.timestamp + lockTimespan) : 0, claimed: false})
         );
 
         // Calculate accumulation with total sDRG instead of drg
@@ -167,7 +172,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         if (stakeId >= userStakeCount(msg.sender)) revert InvalidValue();
         Stake storage _stake = stakes[msg.sender][stakeId];
         if (_stake.unlockTimestamp != 0) revert();
-        _stake.unlockTimestamp = block.timestamp + lockTimespan;
+        _stake.unlockTimestamp = uint64(block.timestamp + lockTimespan);
         emit StakeLocked(msg.sender, stakeId);
     }
 
@@ -239,7 +244,8 @@ contract Staker is Ownable, ReentrancyGuardTransient {
 
     /*
      * @notice Withdraw stakingToken and harvest the rewards
-     * @param amount The amount of stakingToken to withdraw
+     * @param stakeIndexes is an array of indexes of stakes to withdraw
+     * and claim the rewards for.
      */
     function withdraw(uint256[] calldata stakeIndexes) external nonReentrant {
         uint256 numberOfStakeIndexes = stakeIndexes.length;
@@ -327,7 +333,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
      * @param to The address that will receive `token` balance
      */
     function sweep(IERC20 token, address to) external onlyOwner {
-        if (isRewardToken[address(token)]) revert();
+        if (isRewardToken[address(token)]) revert CannotSweepRewardToken();
 
         uint256 balance = token.balanceOf(address(this));
         if (token == stakingToken) {
