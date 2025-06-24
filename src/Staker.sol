@@ -34,6 +34,8 @@ contract Staker is Ownable, ReentrancyGuardTransient {
 
     /// @notice stakingToken token address
     IERC20 public immutable stakingToken;
+    /// @notice Minimum amount needed to make a deposit
+    uint256 private immutable minimumDeposit;
     /// @notice Base of a `stakeHash` - used to retrieve `rewardDebt``
     bytes32 private immutable debtHashBase = keccak256(abi.encode(block.chainid, address(this)));
     /// @notice Lock period length in seconds
@@ -42,8 +44,6 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     uint256 private constant accPrecision = 1e18;
     /// @notice The fee precision - bips
     uint256 private constant feePrecision = 1_00_00;
-    /// @notice Minimum amount needed to make a deposit
-    uint256 private constant minimumDeposit = 100e18;
     /// @notice Maximum value to set as a fee - 90%
     uint256 private constant MAX_FEE = 90_00;
 
@@ -71,9 +71,14 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     error AccountCrossingStakeLimit();
     error StakeIsLocked();
 
-    constructor(address _owner, address _stakingToken, address _treasury, uint256 _fee, address[] memory _rewardTokens)
-        Ownable(_owner)
-    {
+    constructor(
+        address _owner,
+        address _stakingToken,
+        address _treasury,
+        uint256 _minimumDeposit,
+        uint256 _fee,
+        address[] memory _rewardTokens
+    ) Ownable(_owner) {
         // Set the stakingToken token
         if (_stakingToken == address(0)) revert InvalidAddress();
         stakingToken = IERC20(_stakingToken);
@@ -86,6 +91,9 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         if (_fee > MAX_FEE) revert InvalidValue();
         fee = _fee;
         emit FeeSet(_fee);
+
+        if (_minimumDeposit == 0) revert();
+        minimumDeposit = _minimumDeposit;
 
         // Add reward tokens
         isRewardToken[_stakingToken] = true;
