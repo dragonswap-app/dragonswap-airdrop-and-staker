@@ -48,6 +48,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     error ArrayLengthMismatch();
     error InvalidIndex();
     error SignatureInvalid();
+    error SignatureExpired();
 
     /// @dev Disables addition of new portions, changing amounts and adding new unlock timestamps.
     modifier lock() {
@@ -156,8 +157,9 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     /// @dev Callable by anyone eligible.
     /// @param toWallet describes if user wants to retrieves the airdrop directly to the owned EOA (includes penalty by default) or to the staker contract with a chosen lockup period (can include penalty but doesn't by default).
     /// @param locking determines if user is locking tokens inside the staker contract or not.
+    /// @param expirationTimestamp is the expiration timestamp of a signature
     /// @param signature represents an extra layer of safety, a message of approval signed by `signer`.
-    function withdraw(bool toWallet, bool locking, bytes calldata signature) external {
+    function withdraw(bool toWallet, bool locking, uint256 expirationTimestamp, bytes calldata signature) external {
         uint256 n = unlocks.length;
         uint256 total;
         for (uint256 i; i < n; ++i) {
@@ -168,9 +170,11 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         }
         // Ensure user has unwithdrawn funds.
         if (total == 0) revert TotalZero();
+        // Ensure that signature hasn't expired
+        if (expirationTimestamp > block.timestamp) revert SignatureExpired();
         // Compute the message hash.
         bytes32 hash =
-            keccak256(abi.encode(address(this), block.chainid, msg.sender, toWallet, total)).toEthSignedMessageHash();
+            keccak256(abi.encode(address(this), block.chainid, msg.sender, toWallet, total, expirationTimestamp)).toEthSignedMessageHash();
         // Ensure signature validity.
         if (!signer.isValidSignatureNow(hash, signature)) revert SignatureInvalid();
         // Make the withdrawal, either to wallet or to the staker contract.
