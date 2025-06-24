@@ -17,9 +17,6 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     address public token;
     address public staker;
     address public signer;
-    address public treasury;
-    uint256 public penaltyWallet;
-    uint256 public penaltyStaker;
     uint256 public totalDepositedForDistribution;
 
     uint256[] public unlocks;
@@ -64,7 +61,6 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     function initialize(
         address _token,
         address _staker,
-        address _treasury,
         address _signer,
         address initialOwner,
         uint256[] calldata _unlockTimestamps
@@ -77,8 +73,6 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         token = _token;
         if (_signer == address(0)) revert ZeroAddress();
         signer = _signer;
-        if (_treasury == address(0)) revert ZeroAddress();
-        treasury = _treasury;
         if (_staker == address(0)) revert ZeroAddress();
         staker = _staker;
 
@@ -213,7 +207,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
             if (total > _total) emit CleanUp(account);
         }
         // Send tokens to treasury.
-        IERC20(token).safeTransfer(treasury, total);
+        IERC20(token).safeTransfer(IStaker(staker).treasury(), total);
     }
 
     /// @notice Function to get the amount of unlocks per account.
