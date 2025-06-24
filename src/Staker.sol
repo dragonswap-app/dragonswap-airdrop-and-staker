@@ -379,7 +379,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     function getAccountStakeData(address account, uint256 stakeIndex)
         external
         view
-        returns (uint256, uint256, uint256[] memory rewardDebts)
+        returns (uint256, uint256, bool, uint256[] memory rewardDebts)
     {
         if (stakeIndex >= userStakeCount(account)) revert InvalidStakeIndex();
         Stake memory _stake = stakes[account][stakeIndex];
@@ -392,7 +392,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         for (uint256 i; i < _rewardTokensNumber; ++i) {
             rewardDebts[i] = rewardDebt[computeDebtAccessHash(account, stakeIndex, _rewardTokens[i])];
         }
-        return (_stake.amount, _stake.unlockTimestamp, rewardDebts);
+        return (_stake.amount, _stake.unlockTimestamp, _stake.claimed, rewardDebts);
     }
 
     /**
