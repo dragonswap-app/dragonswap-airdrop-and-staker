@@ -67,6 +67,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     error AlreadyAdded();
     error AlreadyClaimed();
     error InvalidStakeIndex();
+    error InsufficientRewards();
     error NoBalance();
     error NotPresent();
     error AccountCrossingStakeLimit();
@@ -452,9 +453,9 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     function _payout(IERC20 token, uint256 pending) private {
         uint256 currRewardBalance = token.balanceOf(address(this));
         uint256 rewardBalance = token == stakingToken ? currRewardBalance - totalDeposits : currRewardBalance;
-        uint256 amount = pending > rewardBalance ? rewardBalance : pending;
-        lastRewardBalance[address(token)] -= amount;
-        token.safeTransfer(msg.sender, amount);
+        if (pending > rewardBalance) revert InsufficientRewards();
+        lastRewardBalance[address(token)] -= pending;
+        token.safeTransfer(msg.sender, pending);
         emit Payout(msg.sender, token, pending);
     }
 }
