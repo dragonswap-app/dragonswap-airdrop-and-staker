@@ -25,7 +25,6 @@ contract Airdrop is Initializable, OwnableUpgradeable {
     uint256[] public unlocks;
     mapping(uint256 portionId => mapping(address account => uint256 amount)) public portions;
 
-    uint256 public constant precision = 1_00_00;
     uint256 public constant cleanUpBuffer = 60 days;
 
     /// Events
@@ -180,7 +179,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         // Make the withdrawal, either to wallet or to the staker contract.
         if (toWallet) {
             // Compute penalty, transfer it to treasury and the rest to the user..
-            uint256 penaltyAmount = total * IStaker(staker).fee() / precision;
+            uint256 penaltyAmount = IStaker(staker).computeFeeAmount(total);
             if (penaltyAmount != 0) {
                 IERC20(token).safeTransfer(IStaker(staker).treasury(), penaltyAmount);
                 total -= penaltyAmount;
