@@ -3,8 +3,9 @@ pragma solidity ^0.8.30;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
-contract Staker is Ownable {
+contract Staker is Ownable, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     struct Stake {
@@ -124,7 +125,7 @@ contract Staker is Ownable {
      * @notice Deposit stakingToken in order to receive the reward tokens
      * @param amount The amount of stakingToken to deposit
      */
-    function stake(address account, uint256 amount, bool locking) external {
+    function stake(address account, uint256 amount, bool locking) external nonReentrant {
         if (account == address(0)) revert ZeroAddress();
         if (amount < minimumDeposit) revert InvalidValue();
 
@@ -198,7 +199,7 @@ contract Staker is Ownable {
      * @param stakeIndexes is an array of stake indexes to claim earnings from
      * @dev Updates accumulated rewards and reward debts
      */
-    function claimEarnings(uint256[] calldata stakeIndexes) external {
+    function claimEarnings(uint256[] calldata stakeIndexes) external nonReentrant {
         uint256 numberOfStakeIndexes = stakeIndexes.length;
         uint256 stakeCount = userStakeCount(msg.sender);
         Stake[] storage _stakes = stakes[msg.sender];
@@ -232,7 +233,7 @@ contract Staker is Ownable {
      * @notice Withdraw stakingToken and harvest the rewards
      * @param amount The amount of stakingToken to withdraw
      */
-    function withdraw(uint256[] calldata stakeIndexes) external {
+    function withdraw(uint256[] calldata stakeIndexes) external nonReentrant {
         uint256 numberOfStakeIndexes = stakeIndexes.length;
         uint256 stakeCount = userStakeCount(msg.sender);
         Stake[] storage _stakes = stakes[msg.sender];
@@ -247,6 +248,8 @@ contract Staker is Ownable {
 
             uint256 amount = _stake.amount;
             uint256 numberOfRewardTokens = rewardTokens.length;
+
+            _stake.claimed = true;
 
             for (uint256 j; j < numberOfRewardTokens; ++j) {
                 address token = rewardTokens[j];
@@ -264,7 +267,6 @@ contract Staker is Ownable {
             }
 
             totalDeposits -= amount;
-            _stake.claimed = true;
 
             // If user hasn't locked, penalty will be applied and redistributed to the active stakers.
             uint256 feeAmount;
@@ -282,7 +284,7 @@ contract Staker is Ownable {
     /**
      * @notice Withdraw without caring about rewards. EMERGENCY ONLY
      */
-    function emergencyWithdraw(uint256[] calldata stakeIndexes) external {
+    function emergencyWithdraw(uint256[] calldata stakeIndexes) external nonReentrant {
         uint256 numberOfStakeIndexes = stakeIndexes.length;
         uint256 stakeCount = userStakeCount(msg.sender);
         Stake[] storage _stakes = stakes[msg.sender];
