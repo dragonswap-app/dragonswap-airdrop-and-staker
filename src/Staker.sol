@@ -50,8 +50,8 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     /// Events
     event Deposit(address indexed funder, address indexed account, uint256 amount, bool indexed locked);
     event StakeLocked(address indexed user, uint256 stakeIndex);
-    event Withdraw(address indexed user, uint256 stakeIndex, uint256 feeAmount);
-    event EmergencyWithdraw(address indexed user, uint256 stakeIndex, uint256 feeAmount);
+    event Withdraw(address indexed user, uint256 stakeIndex, address indexed receiver, uint256 feeAmount);
+    event EmergencyWithdraw(address indexed user, uint256 stakeIndex, address indexed receiver, uint256 feeAmount);
     event Payout(address indexed user, IERC20 indexed rewardToken, uint256 amount);
     event RewardTokenAdded(address indexed token);
     event RewardTokenRemoved(address indexed token);
@@ -157,7 +157,11 @@ contract Staker is Ownable, ReentrancyGuardTransient {
 
         // Add the stake
         stakes[account].push(
-            Stake({amount: amount, unlockTimestamp: locking ? uint64(block.timestamp + lockTimespan) : 0, claimed: false})
+            Stake({
+                amount: amount,
+                unlockTimestamp: locking ? uint64(block.timestamp + lockTimespan) : 0,
+                claimed: false
+            })
         );
 
         // Calculate accumulation with total sDRG instead of drg
@@ -213,7 +217,8 @@ contract Staker is Ownable, ReentrancyGuardTransient {
      * @param stakeIndexes is an array of stake indexes to claim earnings from
      * @dev Updates accumulated rewards and reward debts
      */
-    function claimEarnings(uint256[] calldata stakeIndexes) external nonReentrant {
+    function claimEarnings(uint256[] calldata stakeIndexes, address receiver) external nonReentrant {
+        if (receiver == address(0)) receiver = msg.sender;
         uint256 numberOfStakeIndexes = stakeIndexes.length;
         uint256 stakeCount = userStakeCount(msg.sender);
         Stake[] storage _stakes = stakes[msg.sender];
@@ -237,7 +242,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
                 rewardDebt[rewardDebtHash] = accumulated;
 
                 if (pending != 0) {
-                    _payout(IERC20(token), pending);
+                    _payout(IERC20(token), pending, receiver);
                 }
             }
         }
@@ -248,7 +253,8 @@ contract Staker is Ownable, ReentrancyGuardTransient {
      * @param stakeIndexes is an array of indexes of stakes to withdraw
      * and claim the rewards for.
      */
-    function withdraw(uint256[] calldata stakeIndexes) external nonReentrant {
+    function withdraw(uint256[] calldata stakeIndexes, address receiver) external nonReentrant {
+        if (receiver == address(0)) receiver = msg.sender;
         uint256 numberOfStakeIndexes = stakeIndexes.length;
         uint256 stakeCount = userStakeCount(msg.sender);
         Stake[] storage _stakes = stakes[msg.sender];
@@ -277,7 +283,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
                 delete rewardDebt[rewardDebtHash];
 
                 if (pending != 0) {
-                    _payout(IERC20(token), pending);
+                    _payout(IERC20(token), pending, receiver);
                 }
             }
 
@@ -290,16 +296,16 @@ contract Staker is Ownable, ReentrancyGuardTransient {
                 amount -= feeAmount;
                 stakingToken.safeTransfer(treasury, feeAmount);
             }
-
-            stakingToken.safeTransfer(msg.sender, amount);
-            emit Withdraw(msg.sender, stakeIndex, feeAmount);
+            stakingToken.safeTransfer(receiver, amount);
+            emit Withdraw(msg.sender, stakeIndex, receiver, feeAmount);
         }
     }
 
     /**
      * @notice Withdraw without caring about rewards. EMERGENCY ONLY
      */
-    function emergencyWithdraw(uint256[] calldata stakeIndexes) external nonReentrant {
+    function emergencyWithdraw(uint256[] calldata stakeIndexes, address receiver) external nonReentrant {
+        if (receiver == address(0)) receiver = msg.sender;
         uint256 numberOfStakeIndexes = stakeIndexes.length;
         uint256 stakeCount = userStakeCount(msg.sender);
         Stake[] storage _stakes = stakes[msg.sender];
@@ -322,9 +328,8 @@ contract Staker is Ownable, ReentrancyGuardTransient {
                 amount -= feeAmount;
                 stakingToken.safeTransfer(treasury, feeAmount);
             }
-
-            stakingToken.safeTransfer(msg.sender, amount);
-            emit EmergencyWithdraw(msg.sender, stakeIndex, feeAmount);
+            stakingToken.safeTransfer(receiver, amount);
+            emit EmergencyWithdraw(msg.sender, stakeIndex, receiver, feeAmount);
         }
     }
 
@@ -450,12 +455,12 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         lastRewardBalance[token] = rewardBalance;
     }
 
-    function _payout(IERC20 token, uint256 pending) private {
+    function _payout(IERC20 token, uint256 pending, address receiver) private {
         uint256 currRewardBalance = token.balanceOf(address(this));
         uint256 rewardBalance = token == stakingToken ? currRewardBalance - totalDeposits : currRewardBalance;
         if (pending > rewardBalance) revert InsufficientRewards();
         lastRewardBalance[address(token)] -= pending;
-        token.safeTransfer(msg.sender, pending);
-        emit Payout(msg.sender, token, pending);
+        token.safeTransfer(receiver, pending);
+        emit Payout(receiver, token, pending);
     }
 }
