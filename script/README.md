@@ -76,9 +76,19 @@ After each deploy, the `deployed-addresses.json` is populated with the newly acq
 > DEFAULT_PRIVATE_KEY=
 ***
 
-## Deploying the staker
+## Deployment
 
-### Configuration variables
+### Deployment steps (General)
+
+1) Populate the `deployment-config.json` with the required addresses.
+2) Populate the .env with the required environment variables.
+3) Run `deploy.sh` for an interactive deployment experience.
+4) Modify `deployed-addresses.json` manually. (Optional)
+5) Run `checksum.sh` for verification. (Optional)
+
+***
+## Deploying the staker
+### Prerequisites
 
 |input|description|
 |---|---|
@@ -100,14 +110,42 @@ feeAmount = amount * fee / feePrecision;
 > For example, the fee value of 250 will denominate a 2.5% staking fee.
 ***
 
-### Deployment steps
+See general deployment section for next steps.
+***
 
-1) Populate the `deployment-config.json` with the required addresses.
-2) Populate the .env with the required environment variables.
-3) Run `deploy.sh` for an interactive deployment experience.
-4) Modify `deployed-addresses.json` manually. (Optional)
-5) Run `checksum.sh` for verification. (Optional)
 
+***
+## Deploying the Airdrop Impl
+
+> [!CAUTION]
+>
+> If a factory was deployed using this script, the address remains in `deployed-addresses.json`.
+> 
+> If the factory was deployed without an Airdrop implementation (zero address was set),
+> the script will set the factory's implementation address to the newly deployed one.
+>
+> In case the owner of the factory contract is different to the one being used for the airdrop implementation,
+> the script will revert.
+
+### Prerequisites
+
+|input|description|
+|---|---|
+
+
+
+> [!IMPORTANT] 
+> Fee calculation code below.
+
+```solidity
+feeAmount = amount * fee / feePrecision;
+```
+
+> [!TIP]
+> For example, the fee value of 250 will denominate a 2.5% staking fee.
+***
+
+See general deployment section for next steps.
 ***
 
 # Smart Contract System Architecture
