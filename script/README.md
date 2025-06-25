@@ -1,20 +1,27 @@
 
-# Dragonswap Token Release Kit script
+# Dragonswap Token Release Kit scripts
 
-## 🎯 System Overview
+## 🎯 Project Target
 
-**Initial tokens** → **Airdrop contract** (time-locked release) → **Staker contract** (earning generation)
+Deploy the following components
 
-Users can claim airdropped tokens either directly to their wallet (with penalty) or stake them immediately (penalty-free) to start earning rewards.
+|#|Contract|Desc|
+|---|---|---|
+|1|Airdrop|Deploy an implementation in order to save gas on future deployments|
+|2|AirdropFactory|Deploy an ERC 1167 to utilize the pre-existing airdrop implementation |
+|3|Staker|Users may stake tokens and get rewards in forms of other pre-selected tokens|
 
----
-> [!TIP]
-> Please take your time to read through the usage of the scripts before deploying to a production environment
+Using the following components
+
+|#|Filepath|Generation|
+|---|---|---|
+|1|`project_root`/script/config/deploy-config.json|Manual entry|
+|2|`project_root`/.env|Manual entry|
+|3|`project_root`/script/config/deployed-addresses.json|Automatically generated after each component deployment|
 
 
 ***
-
-## Deployment configuration
+## 🔨 Deployment configuration
 
 > [!NOTE]
 > Below is `script/config/deploy-config.json`
@@ -22,7 +29,7 @@ Users can claim airdropped tokens either directly to their wallet (with penalty)
 
 
 This JSON formatted file is the primary configuration point for the deploy scripts.
-```
+```json
 {
   "airdrop": {
     "owner": "0x1AFb6347B42aDc71D8C02DC43a3307f46E7F061D",
@@ -51,7 +58,7 @@ This JSON formatted file is the primary configuration point for the deploy scrip
 > From now-on we will be calling it `deployed-addresses.json`
 
 After each deploy, the `deployed-addresses.json` is populated with the newly acquired deployed addresses.
-```
+```json
 {
 "airdrop":"0x7fdB7a34D3fcb8d28942178A07F2E5c4A37720F9",
 "airdropImpl":"0x48dDe5adbCd8FF6cd79b9A633042Ea97794e486f",
@@ -59,66 +66,49 @@ After each deploy, the `deployed-addresses.json` is populated with the newly acq
 "staker":"0x65a9F7F52400645cA4611267cfbCCD9A6bDb950F"
 }
 ```
-
+> [!NOTE] 
+> Environment Variables
+> 
+> DEFAULT_RPC_URL=
+> 
+> DEFAULT_SENDER=
+> 
+> DEFAULT_PRIVATE_KEY=
 ***
 
 ## Deploying the staker
 
-> [!TIP] 
-> Below is the code that explains the way that fee parameter for the staker is used in calculating fees.
-> Please do your dilligence and study it thorougly.
+### Configuration variables
 
+|input|description|
+|---|---|
+|owner|The address of the contract owner|
+|stakingToken|The staking token|
+|treasury|The address of the treasury (fee accumulator)|
+|fee|Numerical fee representation (See example above)|
+|rewardTokens|Array of reward token addresses|
+
+
+> [!IMPORTANT] 
+> Fee calculation code below.
 
 ```solidity
-uint256 private constant feePrecision = 1_00_00;
-uint256 feeAmount;
-if (_stake.unlockTimestamp == 0) {
-    feeAmount = amount * fee / feePrecision;
-    amount -= feeAmount;
-    stakingToken.safeTransfer(treasury, feeAmount);
-}
+feeAmount = amount * fee / feePrecision;
 ```
 
-
+> [!TIP]
+> For example, the fee value of 250 will denominate a 2.5% staking fee.
 ***
 
-## Installing project dependencies
-TODO
+### Deployment steps
+
+1) Populate the `deployment-config.json` with the required addresses.
+2) Populate the .env with the required environment variables.
+3) Run `deploy.sh` for an interactive deployment experience.
+4) Modify `deployed-addresses.json` manually. (Optional)
+5) Run `checksum.sh` for verification. (Optional)
 
 ***
-
-## Using the scripts
-> [!TIP] 
-> You may use the scripts for ease of deployment. The environment variables the scripts use from .env are
-> 
-> DEFAULT_RPC_URL
->
-> DEFAULT_SENDER
->
-> DEFAULT_PRIVATE_KEY
-
-Currently, 2 bash scripts are available in the project root.
-* deploy.sh
-* checksum.sh
-
-Please use them in this particular order.
-You may append the --help flag for more information.
-***
-
-
-## 📊 User journey map
-
-1. **Airdrop Claim**: User signs transaction to claim unlocked portions
-2. **Choice Point**: 
-   - **2.A**: Direct withdrawal (pays penalty)
-   - **2.B**: Auto-stake (no penalty, starts earning)
-3. **Staking Phase**: Locked stakes earn rewards for 30 days
-4. **Harvest**: Claim accumulated rewards while maintaining stakes
-5. **Exit**: Withdraw principal + any unclaimed rewards
-
----
-
-
 
 # Smart Contract System Architecture
 
