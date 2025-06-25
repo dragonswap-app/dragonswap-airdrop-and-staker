@@ -166,8 +166,9 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         // Ensure that signature hasn't expired
         if (expirationTimestamp > block.timestamp) revert SignatureExpired();
         // Compute the message hash.
-        bytes32 hash =
-            keccak256(abi.encode(address(this), block.chainid, msg.sender, toWallet, total, expirationTimestamp)).toEthSignedMessageHash();
+        bytes32 hash = keccak256(
+            abi.encode(address(this), block.chainid, msg.sender, toWallet, total, expirationTimestamp)
+        ).toEthSignedMessageHash();
         // Ensure signature validity.
         if (!signer.isValidSignatureNow(hash, signature)) revert SignatureInvalid();
         // Make the withdrawal, either to wallet or to the staker contract.
