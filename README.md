@@ -62,3 +62,5 @@ User is able to operate over a multitude of stakes in a single call: withdraw, c
 While the ordinary withdraw claims earnings by default, emergency withdraw will leave earnings in the contract.
 
 Earnings claim sends all accumulated earnings for the selection of stakes to the user's wallet.
+
+_Warning: Tokens with fees on transfer, tokens that rebase and such are not supported by `Airdrop` nor `Staker` contracts._
