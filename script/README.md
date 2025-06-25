@@ -148,6 +148,9 @@ feeAmount = amount * fee / feePrecision;
 See general deployment section for next steps.
 ***
 
+## Deploying the AirdropFactory
+## Deploying the AirdropInstance
+
 # Smart Contract System Architecture
 
 ## System Overview Diagram
