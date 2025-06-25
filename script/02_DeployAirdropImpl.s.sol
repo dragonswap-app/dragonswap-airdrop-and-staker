@@ -8,15 +8,6 @@ contract DeployAirdropImpl is BaseDeployScript {
     function run() public returns (address implAddress) {
         bool _setFactorysImplementationToThis = false;
 
-        // Check if we need staker address
-        address stakerAddress;
-        if (hasAddress("staker")) {
-            stakerAddress = getAddress("staker");
-            LogUtils.logInfo(string.concat("Using existing Staker: ", vm.toString(stakerAddress)));
-        } else {
-            revert("Staker not deployed. Run 01_DeployStaker.s.sol first or manually insert into deploy-config.json.");
-        }
-
         // Check if factory address exists
         // If it already exists, and the airdropImpl is 0x0
         // Overwrite it
