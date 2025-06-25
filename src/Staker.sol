@@ -185,6 +185,8 @@ contract Staker is Ownable, ReentrancyGuardTransient {
      * @notice Add a reward token
      * @dev Cannot re-add reward tokens once removed
      * @param _rewardToken The address of the reward token
+     * @dev Warning: There can be issues upon adding a previously removed token,
+     * do such with caution.
      */
     function addRewardToken(address _rewardToken) external onlyOwner {
         if (isRewardToken[_rewardToken] || accRewardsPerShare[_rewardToken] != 0) revert AlreadyAdded();
