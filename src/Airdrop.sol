@@ -164,7 +164,7 @@ contract Airdrop is Initializable, OwnableUpgradeable {
         // Ensure user has unwithdrawn funds.
         if (total == 0) revert TotalZero();
         // Ensure that signature hasn't expired
-        if (expirationTimestamp > block.timestamp) revert SignatureExpired();
+        if (block.timestamp > expirationTimestamp) revert SignatureExpired();
         // Compute the message hash.
         bytes32 hash = keccak256(
             abi.encode(address(this), block.chainid, msg.sender, toWallet, total, expirationTimestamp)
