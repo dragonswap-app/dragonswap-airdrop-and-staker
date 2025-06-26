@@ -99,7 +99,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         fee = _fee;
         emit FeeSet(_fee);
 
-        if (_minimumDeposit == 0) revert();
+        if (_minimumDeposit == 0) revert InvalidValue();
         minimumDeposit = _minimumDeposit;
         emit MinimumDepositSet(_minimumDeposit);
 
