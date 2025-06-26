@@ -19,6 +19,8 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     uint256 public fee;
     /// @notice Total amount of deposits
     uint256 public totalDeposits;
+    /// @notice Minimum amount needed to make a deposit
+    uint256 private minimumDeposit;
     /// @notice Array of tokens that users can be distributed as rewards to the stakers
     address[] public rewardTokens;
     /// @notice Mapping to check if a token is a reward token
@@ -34,8 +36,6 @@ contract Staker is Ownable, ReentrancyGuardTransient {
 
     /// @notice stakingToken token address
     IERC20 public immutable stakingToken;
-    /// @notice Minimum amount needed to make a deposit
-    uint256 private immutable minimumDeposit;
     /// @notice Base of a `stakeHash` - used to retrieve `rewardDebt``
     bytes32 private immutable debtHashBase = keccak256(abi.encode(block.chainid, address(this)));
     /// @notice Lock period length in seconds
@@ -58,6 +58,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     event Swept(address indexed token, address indexed to, uint256 amount);
     event TreasurySet(address indexed treasury);
     event FeeSet(uint256 fee);
+    event MinimumDepositSet(uint256 minimumDeposit);
 
     /// Errors
     error CannotSweepRewardToken();
@@ -129,6 +130,16 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         if (_fee > MAX_FEE) revert InvalidValue();
         fee = _fee;
         emit FeeSet(_fee);
+    }
+
+    /**
+     * @notice Function to change the value of `minimumDeposit`.
+     * @param _minimumDeposit New minimum deposit value to be set.
+     */
+    function setMinimumDeposit(uint256 _minimumDeposit) external onlyOwner {
+        if (_minimumDeposit == 0) revert();
+        minimumDeposit = _minimumDeposit;
+        emit MinimumDepositSet(_minimumDeposit);
     }
 
     /**
