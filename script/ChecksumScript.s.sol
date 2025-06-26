@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {Airdrop} from "../src/Airdrop.sol";
 import {AirdropFactory} from "../src/AirdropFactory.sol";
 import {Staker} from "../src/Staker.sol";
+import {IStaker} from "../src/interfaces/IStaker.sol";
 import {BaseDeployScript} from "./base/BaseDeployScript.sol";
 import {console2} from "forge-std/console2.sol";
 import "../test/utils/LogUtils.sol";
@@ -107,7 +108,7 @@ contract ChecksumScript is BaseDeployScript {
         LogUtils.logInfo("=== VERIFYING STAKER ===");
         LogUtils.logInfo(string.concat("Address: ", vm.toString(stakerAddr)));
 
-        CheckResult[] memory checks = new CheckResult[](6);
+        CheckResult[] memory checks = new CheckResult[](7);
         uint256 checkIndex = 0;
 
         // Check if contract exists
@@ -117,6 +118,7 @@ contract ChecksumScript is BaseDeployScript {
             Staker staker = Staker(stakerAddr);
 
             // Parse expected values
+            address expectedAirdrop = getAddress("airdrop");
             address expectedOwner = vm.parseJsonAddress(config, ".staker.owner");
             address expectedStakingToken = vm.parseJsonAddress(config, ".staker.stakingToken");
             address expectedTreasury = vm.parseJsonAddress(config, ".staker.treasury");
@@ -129,6 +131,7 @@ contract ChecksumScript is BaseDeployScript {
             checks[checkIndex++] = checkAddress(staker.treasury(), expectedTreasury, "Treasury");
             checks[checkIndex++] = checkUint(staker.fee(), expectedFee, "Fee");
             checks[checkIndex++] = checkRewardTokens(staker, expectedRewardTokens);
+            checks[checkIndex++] = checkAddress(staker.airdrop(), expectedAirdrop, "Staker airdrop address");
         }
 
         (passed, total) = summarizeChecks(checks, checkIndex);
@@ -206,7 +209,6 @@ contract ChecksumScript is BaseDeployScript {
             // Parse expected values
             address expectedOwner = vm.parseJsonAddress(config, ".airdrop.owner");
             address expectedToken = vm.parseJsonAddress(config, ".airdrop.token");
-            address expectedTreasury = vm.parseJsonAddress(config, ".airdrop.treasury");
             address expectedSigner = vm.parseJsonAddress(config, ".airdrop.signer");
             uint256[] memory expectedTimestamps = vm.parseJsonUintArray(config, ".airdrop.unlockTimestamps");
 
@@ -214,8 +216,8 @@ contract ChecksumScript is BaseDeployScript {
             checks[checkIndex++] = checkAddress(airdrop.owner(), expectedOwner, "Airdrop owner");
             checks[checkIndex++] = checkAddress(airdrop.token(), expectedToken, "Token address");
             checks[checkIndex++] = checkAddress(airdrop.staker(), expectedStaker, "Staker address");
-            checks[checkIndex++] = checkAddress(airdrop.treasury(), expectedTreasury, "Treasury address");
-            checks[checkIndex++] = checkAddress(airdrop.signer(), expectedSigner, "Signer address");
+            checks[checkIndex++] =
+                checks[checkIndex++] = checkAddress(airdrop.signer(), expectedSigner, "Signer address");
             checks[checkIndex++] = checkBool(!airdrop.isLocked(), true, "Not locked initially");
             checks[checkIndex++] = checkUnlockTimestamps(airdrop, expectedTimestamps);
         }

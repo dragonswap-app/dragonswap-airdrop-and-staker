@@ -9,11 +9,10 @@ contract DeployFactory is BaseDeployScript {
     function run() public returns (address factoryAddress) {
         string memory config = loadConfig();
 
-        address implementation;
         address airdropImplAddr = address(0x0);
 
         if (hasAddress("airdropImpl")) {
-            implementation = getAddress("airdropImpl");
+            airdropImplAddr = getAddress("airdropImpl");
             LogUtils.logInfo(string.concat("Using existing airdropImpl address: ", vm.toString(airdropImplAddr)));
         } else {
             LogUtils.logInfo(
@@ -26,7 +25,7 @@ contract DeployFactory is BaseDeployScript {
         address owner = vm.parseJsonAddress(config, ".factory.owner");
 
         vm.startBroadcast();
-        AirdropFactory factory = new AirdropFactory(implementation, owner);
+        AirdropFactory factory = new AirdropFactory(airdropImplAddr, owner);
         vm.stopBroadcast();
 
         factoryAddress = address(factory);

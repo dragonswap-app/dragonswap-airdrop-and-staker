@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {AirdropFactory} from "../src/AirdropFactory.sol";
+import {Staker} from "../src/Staker.sol";
 import {BaseDeployScript} from "./base/BaseDeployScript.sol";
 import {console2} from "forge-std/console2.sol";
 
@@ -16,7 +17,6 @@ contract DeployAirdrop is BaseDeployScript {
         // Parse airdrop configuration
         address owner = vm.parseJsonAddress(config, ".airdrop.owner");
         address token = vm.parseJsonAddress(config, ".airdrop.token");
-        address treasury = vm.parseJsonAddress(config, ".airdrop.treasury");
         address signer = vm.parseJsonAddress(config, ".airdrop.signer");
 
         // Parse unlock timestamps
@@ -27,14 +27,22 @@ contract DeployAirdrop is BaseDeployScript {
 
         // Deploy through factory
         AirdropFactory factory = AirdropFactory(factoryAddress);
-        address instance = factory.deploy(token, stakerAddress, treasury, signer, owner, timestamps);
+        address instance = factory.deploy(token, stakerAddress, signer, owner, timestamps);
+
+        // In case the staker was already deployed (currently always TRUE)
+        // This script will also set the airdropInstance of the staker to the
+        // freshly deployed (current) Airdrop
+
+        Staker staker = Staker(stakerAddress);
+        staker.setAirdropAddress(instance);
 
         vm.stopBroadcast();
 
         string memory addressKey = "airdrop";
         saveAddress(addressKey, instance);
 
-        console2.log("Deployed Airdrop (%s) at:", ".airdrop", instance);
+        console2.log("Deployed Airdrop (%s) at:", instance);
+        console2.log("Set staker airdrop to (%s)", instance);
         return instance;
     }
 }

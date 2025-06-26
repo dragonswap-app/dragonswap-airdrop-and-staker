@@ -9,6 +9,7 @@ import "../test/utils/LogUtils.sol";
 
 contract DeployStaker is BaseDeployScript {
     function run() public returns (address stakerAddress) {
+        loadAddresses();
         LogUtils.logInfo("Deploying Staker configuration");
         LogUtils.logInfo("Loading Staker configuration...");
         string memory config = loadConfig();
@@ -26,6 +27,13 @@ contract DeployStaker is BaseDeployScript {
         uint256 fee = vm.parseJsonUint(config, ".staker.fee");
         LogUtils.logInfo(string.concat("Fee set to ", vm.toString(fee)));
 
+        uint256 minimumDeposit = vm.parseJsonUint(config, ".staker.minimumDeposit");
+        LogUtils.logInfo(string.concat("Minimum deposit set to ", vm.toString(minimumDeposit)));
+
+        if (hasAddress("airdrop")) {
+            LogUtils.logDebug("AIRDROP ADDRESS EXISTS");
+        }
+
         address[] memory rewardTokens = vm.parseJsonAddressArray(config, ".staker.rewardTokens");
 
         for (uint256 i = 0; i < rewardTokens.length; i++) {
@@ -36,9 +44,20 @@ contract DeployStaker is BaseDeployScript {
 
         vm.startBroadcast();
 
-        // Deploy Staker
-        LogUtils.logInfo("Deploying staker...");
-        Staker staker = new Staker(owner, stakingToken, treasury, fee, rewardTokens);
+        address airdropAddress = address(0x0);
+
+        Staker staker = new Staker(owner, stakingToken, treasury, minimumDeposit, fee, rewardTokens);
+        LogUtils.logSuccess("Staker deployed.");
+
+        // Check if existing airdrop available and assign
+        if (hasAddress("airdrop")) {
+            airdropAddress = getAddress("airdrop");
+            LogUtils.logInfo(string.concat("Setting existing airdrop address to staker: ", vm.toString(airdropAddress)));
+        } else {
+            LogUtils.logInfo(string.concat("No previous Airdrop address detected. Staker airdrop remains unassigned."));
+        }
+
+        staker.setAirdropAddress(airdropAddress);
 
         vm.stopBroadcast();
 
