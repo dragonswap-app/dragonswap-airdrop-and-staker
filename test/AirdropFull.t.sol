@@ -24,7 +24,9 @@ contract AirdropFullTest is Test {
     address public signer = vm.addr(signerPrivateKey);
 
     uint256 constant PRECISION = 1_00_00;
+    uint256 constant MINIMUM_DEPOSIT = 5 wei;
     uint256 constant DEFAULT_STAKER_FEE = 50_00; // 50% fee from staker
+    uint256 DECADE22TIMESTAMP = 400102528271;
 
     Airdrop public airdropImpl;
     AirdropFactory public factory;
@@ -49,7 +51,7 @@ contract AirdropFullTest is Test {
         address[] memory rewardTokens = new address[](1);
         rewardTokens[0] = address(2);
         vm.prank(owner);
-        staker = new Staker(owner, address(token), treasury, DEFAULT_STAKER_FEE, rewardTokens);
+        staker = new Staker(owner, address(token), treasury, MINIMUM_DEPOSIT, DEFAULT_STAKER_FEE, rewardTokens);
 
         LogUtils.logInfo("Instantiating an Airdrop implementation");
         airdropImpl = new Airdrop();
@@ -72,7 +74,7 @@ contract AirdropFullTest is Test {
 
         LogUtils.logInfo("Factory deploying...");
         vm.prank(owner);
-        address airdropAddr = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address airdropAddr = factory.deploy(address(token), address(staker), signer, owner, timestamps);
 
         LogUtils.logInfo("Setting airdrop to factory deploy address");
         airdrop = Airdrop(airdropAddr);
@@ -84,7 +86,6 @@ contract AirdropFullTest is Test {
         LogUtils.logDebug("Starting initialization assertion test");
         assertEq(address(airdrop.token()), address(token));
         assertEq(airdrop.signer(), signer);
-        assertEq(airdrop.treasury(), treasury);
         assertEq(airdrop.staker(), address(staker));
         assertEq(airdrop.owner(), owner);
         assertEq(airdrop.unlocks(0), timestamps[0]);
@@ -92,8 +93,6 @@ contract AirdropFullTest is Test {
         assertFalse(airdrop.isLocked());
         /* NOTE: penaltyWallet and penaltyStaker are */
         /* not initialized in the contract           */
-        assertEq(airdrop.penaltyWallet(), 0);
-        assertEq(airdrop.penaltyStaker(), 0);
     }
 
     /* TEST: test_FactoryDeployment - - - - - - - - - - - - - - - - - - - - - - /
@@ -244,7 +243,7 @@ contract AirdropFullTest is Test {
         LogUtils.logDebug("Testing implementation cannot be initialized");
 
         vm.expectRevert();
-        airdropImpl.initialize(address(token), address(staker), treasury, signer, owner, timestamps);
+        airdropImpl.initialize(address(token), address(staker), signer, owner, timestamps);
     }
 
     /* TEST: test_AddTimestamp - - - - - - - - - - - - - - - - - - - - - - - - -/
@@ -434,8 +433,9 @@ contract AirdropFullTest is Test {
         vm.warp(timestamps[0] + 1);
 
         LogUtils.logDebug("Acquiring hash");
-        bytes32 hash =
-            keccak256(abi.encode(address(airdrop), block.chainid, alice, true, ALICE_PORTION)).toEthSignedMessageHash();
+        bytes32 hash = keccak256(
+            abi.encode(address(airdrop), block.chainid, alice, true, ALICE_PORTION, DECADE22TIMESTAMP)
+        ).toEthSignedMessageHash();
 
         LogUtils.logDebug(string.concat("signing the hash with private key: ", vm.toString(signerPrivateKey)));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
@@ -455,7 +455,7 @@ contract AirdropFullTest is Test {
         vm.expectEmit();
         emit Airdrop.WalletWithdrawal(alice, expectedReceived, expectedPenalty);
         LogUtils.logDebug("Withdrawing funds");
-        airdrop.withdraw(true, false, signature); // Updated to match function signature
+        airdrop.withdraw(true, false, DECADE22TIMESTAMP, signature); // Updated to match function signature
 
         LogUtils.logDebug("Asserting conditions");
         assertEq(token.balanceOf(alice), aliceBalanceBefore + expectedReceived);
@@ -481,8 +481,9 @@ contract AirdropFullTest is Test {
 
         vm.warp(timestamps[0] + 1);
 
-        bytes32 hash =
-            keccak256(abi.encode(address(airdrop), block.chainid, alice, false, ALICE_PORTION)).toEthSignedMessageHash();
+        bytes32 hash = keccak256(
+            abi.encode(address(airdrop), block.chainid, alice, false, ALICE_PORTION, DECADE22TIMESTAMP)
+        ).toEthSignedMessageHash();
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -490,7 +491,7 @@ contract AirdropFullTest is Test {
         vm.prank(alice);
         vm.expectEmit();
         emit Airdrop.StakerWithdrawal(alice, ALICE_PORTION, true); // Updated event signature
-        airdrop.withdraw(false, true, signature); // toWallet=false, locking=true
+        airdrop.withdraw(false, true, DECADE22TIMESTAMP, signature); // toWallet=false, locking=true
 
         /* Verify portion was deleted */
         assertEq(airdrop.portions(0, alice), 0);
@@ -515,14 +516,15 @@ contract AirdropFullTest is Test {
 
         /* Don't warp past unlock time, so no portions are available */
 
-        bytes32 hash = keccak256(abi.encode(address(airdrop), block.chainid, alice, true, 0)).toEthSignedMessageHash();
+        bytes32 hash = keccak256(abi.encode(address(airdrop), block.chainid, alice, true, 0, DECADE22TIMESTAMP))
+            .toEthSignedMessageHash();
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(alice);
         vm.expectRevert(Airdrop.TotalZero.selector);
-        airdrop.withdraw(true, false, signature);
+        airdrop.withdraw(true, false, DECADE22TIMESTAMP, signature);
     }
 
     /* TEST: test_Withdraw_RevertWhenSignatureInvalid - - - - - - - - - - - - - /
@@ -551,7 +553,7 @@ contract AirdropFullTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(Airdrop.SignatureInvalid.selector);
-        airdrop.withdraw(true, false, invalidSignature);
+        airdrop.withdraw(true, false, DECADE22TIMESTAMP, invalidSignature);
     }
 
     /* TEST: test_cleanUpUnclaimedPortions - - - - - - - - - - - - - - - - - - -/
@@ -635,7 +637,6 @@ contract AirdropFullTest is Test {
         factory.deploy(
             address(0), // Zero token address
             address(staker),
-            treasury,
             signer,
             owner,
             timestamps
@@ -652,24 +653,6 @@ contract AirdropFullTest is Test {
         factory.deploy(
             address(token),
             address(0), // Zero staker address
-            treasury,
-            signer,
-            owner,
-            timestamps
-        );
-    }
-
-    /* TEST: test_Initialize_RevertWhenTreasuryZeroAddress - - - - - - - - - - - /
-     * Tests that initialization reverts when treasury address is zero - - - - */
-    function test_Initialize_RevertWhenTreasuryZeroAddress() public {
-        LogUtils.logDebug("Testing initialize revert when treasury is zero address");
-
-        vm.expectRevert();
-        vm.prank(owner);
-        factory.deploy(
-            address(token),
-            address(staker),
-            address(0), // Zero treasury address
             signer,
             owner,
             timestamps
@@ -683,14 +666,7 @@ contract AirdropFullTest is Test {
 
         vm.expectRevert();
         vm.prank(owner);
-        factory.deploy(
-            address(token),
-            address(staker),
-            treasury,
-            address(0), // Zero signer address
-            owner,
-            timestamps
-        );
+        factory.deploy(address(token), address(staker), address(0), owner, timestamps);
     }
 
     /* TEST: test_Initialize_RevertWhenInvalidTimestampOrder - - - - - - - - - - /
@@ -705,6 +681,6 @@ contract AirdropFullTest is Test {
 
         vm.expectRevert();
         vm.prank(owner);
-        factory.deploy(address(token), address(staker), treasury, signer, owner, invalidTimestamps);
+        factory.deploy(address(token), address(staker), signer, owner, invalidTimestamps);
     }
 }

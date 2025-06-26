@@ -12,6 +12,9 @@ import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/Messa
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract AirdropTest is Test {
+    uint256 MINIMUM_DEPOSIT = 5 wei;
+    uint256 DECADE22TIMESTAMP = 4102528271;
+
     using MessageHashUtils for bytes32;
 
     AirdropFactory public airdropFactory;
@@ -32,12 +35,11 @@ contract AirdropTest is Test {
         address[] memory rewardTokens = new address[](1);
         rewardTokens[0] = address(2);
 
-        Staker staker = new Staker(address(1), address(token), address(3), 1_00, rewardTokens);
+        Staker staker = new Staker(address(1), address(token), address(3), MINIMUM_DEPOSIT, 1_00, rewardTokens);
 
         uint256[] memory timestamps = new uint256[](0);
-        Airdrop instance = Airdrop(
-            airdropFactory.deploy(address(token), address(staker), address(1), signer.addr, address(0), timestamps)
-        );
+        Airdrop instance =
+            Airdrop(airdropFactory.deploy(address(token), address(staker), signer.addr, address(0), timestamps));
 
         assertNotEq(address(instance), address(0));
         assertEq(address(instance), airdropFactory.getLatestDeployment());
@@ -72,7 +74,7 @@ contract AirdropTest is Test {
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.prank(user);
         vm.warp(block.timestamp + 11);
-        instance.withdraw(toWallet, false, signature);
+        instance.withdraw(toWallet, false, DECADE22TIMESTAMP, signature);
         uint256 penalty = amounts[0] * staker.fee() / 1_00_00;
         assertEq(token.balanceOf(user), amounts[0] - penalty);
         assertEq(token.balanceOf(address(3)), penalty);
