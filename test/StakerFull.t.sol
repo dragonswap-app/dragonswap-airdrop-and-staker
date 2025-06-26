@@ -17,7 +17,7 @@ contract StakerFullTest is Test {
     uint256 public constant ALICE_STAKE = 10_000 * 10 ** 18;
     uint256 public constant BOB_STAKE = 20_000 * 10 ** 18;
     uint256 public constant CHARLIE_STAKE = 30_000 * 10 ** 18;
-    uint256 public constant MINIMUM_DEPOSIT = 100 * 10 ** 18;
+    uint256 public constant MINIMUM_DEPOSIT = 1 wei;
 
     uint256 constant PRECISION = 1_00_00;
     uint256 constant DEFAULT_FEE = 25_00; // 25% fee
@@ -501,8 +501,8 @@ contract StakerFullTest is Test {
         vm.expectEmit();
         emit Staker.Payout(alice, rewardToken1, rewardAmount);
         vm.expectEmit();
-        emit Staker.Withdraw(alice, 0, msg.sender, expectedFee);
-        staker.withdraw(stakeIndexes, address(0x0));
+        emit Staker.Withdraw(alice, 0, address(alice), expectedFee);
+        staker.withdraw(stakeIndexes, address(alice));
 
         // Check balances
         assertEq(stakingToken.balanceOf(alice), aliceBalanceBefore + expectedReturn);
@@ -579,29 +579,45 @@ contract StakerFullTest is Test {
     /* TEST: test_EmergencyWithdraw_Success - - - - - - - - - - - - - - - - - - /
      * Tests emergency withdrawal without rewards - - - - - - - - - - - - - - -*/
     function test_EmergencyWithdraw_Success() public {
+        uint256 LOCAL_SMALL_ALICE_STAKE = 1000;
         LogUtils.logDebug("Testing emergencyWithdraw functionality");
 
+        LogUtils.logDebug(
+            string.concat("Starting alice balance of token: ", vm.toString(stakingToken.balanceOf(alice)))
+        );
         // Alice stakes without locking
         vm.prank(alice);
-        staker.stake(alice, ALICE_STAKE, false);
+        staker.stake(alice, LOCAL_SMALL_ALICE_STAKE, false);
+
+        LogUtils.logDebug(string.concat("ALICE IS STAKING: ", vm.toString(LOCAL_SMALL_ALICE_STAKE)));
 
         // Send rewards but don't claim them
-        rewardToken1.mint(address(staker), 1000 * 10 ** 18);
+        rewardToken1.mint(address(staker), 10000000 * 10 ** 18);
 
         uint256[] memory stakeIndexes = new uint256[](1);
         stakeIndexes[0] = 0;
 
-        uint256 expectedFee = (ALICE_STAKE * DEFAULT_FEE) / PRECISION;
-        uint256 expectedReturn = ALICE_STAKE - expectedFee;
+        uint256 expectedFee = (LOCAL_SMALL_ALICE_STAKE * DEFAULT_FEE) / PRECISION;
+
+        LogUtils.logDebug(string.concat("Expecting the fee of 25%: ", vm.toString(expectedFee)));
+        uint256 expectedReturn = LOCAL_SMALL_ALICE_STAKE - expectedFee;
 
         uint256 aliceBalanceBefore = stakingToken.balanceOf(alice);
         uint256 aliceRewardBalanceBefore = rewardToken1.balanceOf(alice);
 
+        LogUtils.logDebug(
+            string.concat("Staker balance before: ", vm.toString(stakingToken.balanceOf(address(staker))))
+        );
+        LogUtils.logDebug(string.concat("Alice balance before: ", vm.toString(stakingToken.balanceOf(address(alice)))));
+
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.EmergencyWithdraw(alice, 0, msg.sender, expectedFee);
-        staker.emergencyWithdraw(stakeIndexes, address(0x0));
+        emit Staker.EmergencyWithdraw(alice, 0, address(alice), expectedFee);
 
+        staker.emergencyWithdraw(stakeIndexes, address(alice));
+        LogUtils.logDebug(string.concat("Staker balance after: ", vm.toString(stakingToken.balanceOf(address(staker)))));
+
+        LogUtils.logDebug(string.concat("Alice balance after: ", vm.toString(stakingToken.balanceOf(address(alice)))));
         // Check only principal was withdrawn, no rewards
         assertEq(stakingToken.balanceOf(alice), aliceBalanceBefore + expectedReturn);
         assertEq(rewardToken1.balanceOf(alice), aliceRewardBalanceBefore); // No rewards claimed

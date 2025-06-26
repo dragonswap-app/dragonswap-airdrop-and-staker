@@ -68,8 +68,9 @@ contract AirdropTest is Test {
 
         // Withdraw
         bool toWallet = true;
-        bytes32 hash =
-            keccak256(abi.encode(address(instance), block.chainid, user, toWallet, amounts[0])).toEthSignedMessageHash();
+        bytes32 hash = keccak256(
+            abi.encode(address(instance), block.chainid, user, toWallet, amounts[0], DECADE22TIMESTAMP)
+        ).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signer, hash);
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.prank(user);
