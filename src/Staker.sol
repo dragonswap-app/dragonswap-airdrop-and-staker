@@ -14,13 +14,16 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         bool claimed;
     }
 
+    /// @notice Treasury address
     address public treasury;
+    /// @notice Airdrop contract address
+    address public airdrop;
     /// @notice Withdrawal fee for users which haven't locked
     uint256 public fee;
     /// @notice Total amount of deposits
     uint256 public totalDeposits;
     /// @notice Minimum amount needed to make a deposit
-    uint256 private minimumDeposit;
+    uint256 public minimumDeposit;
     /// @notice Array of tokens that users can be distributed as rewards to the stakers
     address[] public rewardTokens;
     /// @notice Mapping to check if a token is a reward token
@@ -59,6 +62,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     event TreasurySet(address indexed treasury);
     event FeeSet(uint256 fee);
     event MinimumDepositSet(uint256 minimumDeposit);
+    event AirdropSet(address airdrop);
 
     /// Errors
     error CannotSweepRewardToken();
@@ -123,6 +127,14 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     }
 
     /**
+     * @notice Function to set the airdrop address.
+     */
+    function setAirdropAddress(address _airdrop) external onlyOwner {
+        airdrop = _airdrop;
+        emit AirdropSet(_airdrop);
+    }
+
+    /**
      * @notice Function to change the withdrwal fee value.
      * @param _fee New fee value to be set.
      */
@@ -152,7 +164,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
      */
     function stake(address account, uint256 amount, bool locking) external nonReentrant {
         if (account == address(0)) revert ZeroAddress();
-        if (amount < minimumDeposit) revert InvalidValue();
+        if (msg.sender != airdrop && amount < minimumDeposit) revert InvalidValue();
 
         // Gas opt
         uint256 numberOfRewardTokens = rewardTokens.length;
