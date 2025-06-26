@@ -101,6 +101,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
 
         if (_minimumDeposit == 0) revert();
         minimumDeposit = _minimumDeposit;
+        emit MinimumDepositSet(_minimumDeposit);
 
         // Add reward tokens
         isRewardToken[_stakingToken] = true;
