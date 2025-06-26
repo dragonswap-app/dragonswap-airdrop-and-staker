@@ -30,13 +30,11 @@ contract AirdropFactory is Ownable {
     }
 
     /// @notice Function to deploy new airdrop instance through the factory
-    function deploy(
-        address token,
-        address staker,
-        address signer,
-        address _owner,
-        uint256[] calldata timestamps
-    ) external onlyOwner returns (address instance) {
+    function deploy(address token, address staker, address signer, address _owner, uint256[] calldata timestamps)
+        external
+        onlyOwner
+        returns (address instance)
+    {
         // Gas opt
         address impl = implementation;
         // Require that implementation is set
