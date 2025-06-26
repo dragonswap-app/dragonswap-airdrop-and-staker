@@ -197,6 +197,9 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         emit Deposit(msg.sender, account, amount, locking);
     }
 
+    /**
+     * @notice Function to lock a stake that hasn't been locked yet.
+     */
     function lockStake(uint256 stakeId) external {
         if (stakeId >= userStakeCount(msg.sender)) revert InvalidValue();
         Stake storage _stake = stakes[msg.sender][stakeId];
