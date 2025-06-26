@@ -33,7 +33,6 @@ contract AirdropFactory is Ownable {
     function deploy(
         address token,
         address staker,
-        address treasury,
         address signer,
         address _owner,
         uint256[] calldata timestamps
@@ -47,10 +46,9 @@ contract AirdropFactory is Ownable {
 
         // Encode data
         bytes memory data = abi.encodeWithSignature(
-            "initialize(address,address,address,address,address,uint256[])",
+            "initialize(address,address,address,address,uint256[])",
             token,
             staker,
-            treasury,
             signer,
             _owner != address(0) ? _owner : owner(),
             timestamps
