@@ -25,10 +25,10 @@ Using the following components
 
 > [!NOTE]
 > Below is `script/config/deploy-config.json`
+> 
 > From now-on we will be calling it `deploy-config.json`
-
-
-This JSON formatted file is the primary configuration point for the deploy scripts.
+> 
+> This JSON formatted file is the primary configuration point for the deploy scripts.
 ```json
 {
   "airdrop": {
@@ -44,6 +44,7 @@ This JSON formatted file is the primary configuration point for the deploy scrip
   "staker": {
     "owner": "0x1AFb6347B42aDc71D8C02DC43a3307f46E7F061D",
     "stakingToken": "0xC850Ad7Bd0cc903a2B470Af6eFA7d1043571C095",
+    "minimumDeposit": 300,
     "treasury": "0x1AFb6347B42aDc71D8C02DC43a3307f46E7F061D",
     "fee": 1000,
     "rewardTokens": ["0xC850Ad7Bd0cc903a2B470Af6eFA7d1043571C095"]
@@ -55,9 +56,10 @@ This JSON formatted file is the primary configuration point for the deploy scrip
 
 > [!NOTE] 
 > Below is `script/config/deployed-addresses.json`
+> 
 > From now-on we will be calling it `deployed-addresses.json`
-
-After each deploy, the `deployed-addresses.json` is populated with the newly acquired deployed addresses.
+> 
+> After each deploy, the `deployed-addresses.json` is populated with the newly acquired deployed addresses.
 ```json
 {
 "airdrop":"0x7fdB7a34D3fcb8d28942178A07F2E5c4A37720F9",
@@ -74,7 +76,6 @@ After each deploy, the `deployed-addresses.json` is populated with the newly acq
 > DEFAULT_SENDER=
 > 
 > DEFAULT_PRIVATE_KEY=
-***
 
 ## Deployment
 
@@ -87,42 +88,45 @@ After each deploy, the `deployed-addresses.json` is populated with the newly acq
 5) Run `checksum.sh` for verification. (Optional)
 
 ***
-## Deploying the staker
+## 1. Deploying the staker
 ### Prerequisites
 
 |input|description|
 |---|---|
 |owner|The address of the contract owner|
 |stakingToken|The staking token|
+|minimumDeposit|The minimum amount of a token that the user must send for a successful deposit|
 |treasury|The address of the treasury (fee accumulator)|
 |fee|Numerical fee representation (See example above)|
 |rewardTokens|Array of reward token addresses|
 
 
+
 > [!IMPORTANT] 
 > Fee calculation code below.
+> An example numerical value of 250 denominates a 2.5% fee:
 
 ```solidity
+feePrecision = 1_00_00;
+fee = 250;
+
 feeAmount = amount * fee / feePrecision;
 ```
 
-> [!TIP]
-> For example, the fee value of 250 will denominate a 2.5% staking fee.
-***
 
-See general deployment section for next steps.
-***
+
+See [general deployment](#deployment-steps-general) section for next steps
 
 
 ***
-## Deploying the Airdrop Impl
+## 2. Deploying the Airdrop Impl
 
 > [!CAUTION]
 >
 > If a factory was deployed using this script, the address remains in `deployed-addresses.json`.
 > 
 > If the factory was deployed without an Airdrop implementation (zero address was set),
-> the script will set the factory's implementation address to the newly deployed one.
+> the script will set the factory's airdrop implementation address to the newly deployed one.
 >
 > In case the owner of the factory contract is different to the one being used for the airdrop implementation,
 > the script will revert.
@@ -134,25 +138,56 @@ See general deployment section for next steps.
 
 
 
-> [!IMPORTANT] 
-> Fee calculation code below.
-
-```solidity
-feeAmount = amount * fee / feePrecision;
-```
-
-> [!TIP]
-> For example, the fee value of 250 will denominate a 2.5% staking fee.
+See [general deployment](#deployment-steps-general) section for next steps
 ***
 
-See general deployment section for next steps.
+## 3. Deploying the AirdropFactory
+> [!NOTE]  
+>
+> If no airdrop implementation was deployed, the airdrop implementation address will be set to address zero.
+>
+> You may manually add the implementation address to `deployed-addresses.json` in case it was not already deployed
+> using the same environment and script.
+
+### Prerequisites
+
+|input|description|
+|---|---|
+|owner|The owner of the airdrop factory contract|
+
+
+See [general deployment](#deployment-steps-general) section for next steps
+
 ***
 
-## Deploying the AirdropFactory
-## Deploying the AirdropInstance
+## 4. Deploying the AirdropInstance
+### Prerequisites
+
+For `deploy-config,json`
+|input|description|
+|---|---|
+|owner|The owner of the airdrop factory contract|
+|signer|The address of the signer|
+|token|The address of token being airdropped|
+|unlockTimestamps|An array of epoch timestamps (precision: seconds)|
+
+
+For `deployed-addresses.json`
+|input|description|
+|factory|The address of the factory used to deploy this airdrop|
+|staker|The address of the staker contract|
+
+> [!IMPORTANT]
+> Deploying this script will cause the airdrop instance to be deployed under these parameters
+> through the AirdropFactory, and set the address of the staker to the staker instance.
+> 
+> It will also set the Staker's airdrop address to the newly deployed one.
+
+See [general deployment](#deployment-steps-general) section for next steps
+
+***
 
 # Smart Contract System Architecture
-
 ## System Overview Diagram
 ```mermaid
 graph TB
