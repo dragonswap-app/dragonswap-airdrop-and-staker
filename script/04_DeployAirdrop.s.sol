@@ -29,14 +29,7 @@ contract DeployAirdrop is BaseDeployScript {
         AirdropFactory factory = AirdropFactory(factoryAddress);
         address instance = factory.deploy(token, stakerAddress, signer, owner, timestamps);
 
-        // In case the staker was already deployed (currently always TRUE, prepare for other variants)
-        // This script will also set the airdropInstance of the staker to the
-        // freshly deployed (current) Airdrop
-        if (hasAddress("staker")) {
-            address stakerAddress = getAddress("staker");
-            Staker(stakerAddress).setAirdropAddress(instance);
-        }
-
+        // Set active airdrop on the staker side
         Staker staker = Staker(stakerAddress);
         staker.setAirdropAddress(instance);
 
