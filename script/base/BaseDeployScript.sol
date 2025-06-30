@@ -26,72 +26,40 @@ abstract contract BaseDeployScript is Script {
 
     function saveAddress(string memory key, address addr) internal {
         string memory existingJson = loadAddresses();
-
-        // Object key for addresses
-        string memory objectKey = "addresses";
         string memory finalJson;
 
-        // Check if we have existing addresses in proper format
-        bool hasExistingAddresses = false;
-        try vm.parseJsonKeys(existingJson, ".addresses") returns (string[] memory) {
-            hasExistingAddresses = true;
-        } catch {}
+        // Check if we have an empty json file, simple write and return if yes
+        if (bytes(existingJson).length <= 2) {
+            finalJson = vm.serializeAddress("", key, addr);
+            vm.writeFile(ADDRESSES_PATH, finalJson);
+            return;
+        }
 
-        if (!hasExistingAddresses && bytes(existingJson).length > 2) {
-            // Check if the file has a different structure (legacy flat format)
-            try vm.parseJsonKeys(existingJson, ".") returns (string[] memory rootKeys) {
-                if (rootKeys.length > 0) {
-                    // Migrate from flat structure to nested structure
-                    bool isFirst = true;
-                    for (uint256 i = 0; i < rootKeys.length; i++) {
-                        if (
-                            bytes(rootKeys[i]).length > 0
-                                && keccak256(bytes(rootKeys[i])) != keccak256(bytes("addresses"))
-                        ) {
-                            address existingAddr = vm.parseJsonAddress(existingJson, string.concat(".", rootKeys[i]));
-                            if (isFirst) {
-                                finalJson = vm.serializeAddress(objectKey, rootKeys[i], existingAddr);
-                                isFirst = false;
-                            } else {
-                                finalJson = vm.serializeAddress(objectKey, rootKeys[i], existingAddr);
-                            }
-                        }
-                    }
-                    // Add the new address
-                    finalJson = vm.serializeAddress(objectKey, key, addr);
-                } else {
-                    // Start fresh
-                    finalJson = vm.serializeAddress(objectKey, key, addr);
-                }
-            } catch {
-                // Start fresh
-                finalJson = vm.serializeAddress(objectKey, key, addr);
-            }
-        } else if (hasExistingAddresses) {
-            // We have proper structure, preserve existing addresses
-            string[] memory keys = vm.parseJsonKeys(existingJson, ".addresses");
+        // Parse existing keys and overwrite key if it exists
+        string[] memory keys = vm.parseJsonKeys(existingJson, ".");
 
-            // Add all existing addresses (including updating if key exists)
-            bool foundKey = false;
-            for (uint256 i = 0; i < keys.length; i++) {
-                if (keccak256(bytes(keys[i])) == keccak256(bytes(key))) {
-                    // Update existing key
-                    finalJson = vm.serializeAddress(objectKey, keys[i], addr);
-                    foundKey = true;
-                } else {
-                    // Keep existing address
-                    address existingAddr = vm.parseJsonAddress(existingJson, string.concat(".addresses.", keys[i]));
-                    finalJson = vm.serializeAddress(objectKey, keys[i], existingAddr);
-                }
+        // Serialize all existing keys
+        for (uint256 i = 0; i < keys.length; i++) {
+            if (keccak256(bytes(keys[i])) == keccak256(bytes(key))) {
+                // Update existing key
+                finalJson = vm.serializeAddress("", keys[i], addr);
+            } else {
+                // Keep existing address
+                address existingAddr = vm.parseJsonAddress(existingJson, string.concat(".", keys[i]));
+                finalJson = vm.serializeAddress("", keys[i], existingAddr);
             }
+        }
 
-            // Add new key if not found
-            if (!foundKey) {
-                finalJson = vm.serializeAddress(objectKey, key, addr);
+        // Add new key if it doesn't exist
+        bool keyExists = false;
+        for (uint256 i = 0; i < keys.length; i++) {
+            if (keccak256(bytes(keys[i])) == keccak256(bytes(key))) {
+                keyExists = true;
+                break;
             }
-        } else {
-            // Empty or new file
-            finalJson = vm.serializeAddress(objectKey, key, addr);
+        }
+        if (!keyExists) {
+            finalJson = vm.serializeAddress("", key, addr);
         }
 
         vm.writeFile(ADDRESSES_PATH, finalJson);
