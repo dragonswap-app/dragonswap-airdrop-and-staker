@@ -23,7 +23,7 @@ contract DeployAirdrop is BaseDeployScript {
         uint256[] memory timestamps;
         timestamps = vm.parseJsonUintArray(config, ".airdrop.unlockTimestamps");
 
-        vm.startBroadcast();
+        vm.startBroadcast(vm.envUint("DEFAULT_PRIVATE_KEY"));
 
         // Deploy through factory
         AirdropFactory factory = AirdropFactory(factoryAddress);

@@ -34,7 +34,7 @@ contract DeployAirdropImpl is BaseDeployScript {
             LogUtils.logInfo("Factory has not been deployed. Only deploying the airdropImpl.");
         }
 
-        vm.startBroadcast();
+        vm.startBroadcast(vm.envUint("DEFAULT_PRIVATE_KEY"));
 
         // Deploy Airdrop implementation
         Airdrop airdropImpl = new Airdrop();

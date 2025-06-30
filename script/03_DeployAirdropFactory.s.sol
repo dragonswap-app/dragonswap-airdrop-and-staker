@@ -24,7 +24,7 @@ contract DeployFactory is BaseDeployScript {
 
         address owner = vm.parseJsonAddress(config, ".factory.owner");
 
-        vm.startBroadcast();
+        vm.startBroadcast(vm.envUint("DEFAULT_PRIVATE_KEY"));
         AirdropFactory factory = new AirdropFactory(airdropImplAddr, owner);
         vm.stopBroadcast();
 

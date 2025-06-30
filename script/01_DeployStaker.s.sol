@@ -42,7 +42,7 @@ contract DeployStaker is BaseDeployScript {
             );
         }
 
-        vm.startBroadcast();
+        vm.startBroadcast(vm.envUint("DEFAULT_PRIVATE_KEY"));
 
         address airdropAddress = address(0x0);
 
@@ -53,11 +53,10 @@ contract DeployStaker is BaseDeployScript {
         if (hasAddress("airdrop")) {
             airdropAddress = getAddress("airdrop");
             LogUtils.logInfo(string.concat("Setting existing airdrop address to staker: ", vm.toString(airdropAddress)));
+            staker.setAirdropAddress(airdropAddress);
         } else {
             LogUtils.logInfo(string.concat("No previous Airdrop address detected. Staker airdrop remains unassigned."));
         }
-
-        staker.setAirdropAddress(airdropAddress);
 
         vm.stopBroadcast();
 
