@@ -1,8 +1,6 @@
 
 # Dragonswap Token Release Kit scripts
 
-<img src="example.svg">
-
 ## 🎯 Project Target
 
 
@@ -71,24 +69,29 @@ Using the following components
 "staker":"0x65a9F7F52400645cA4611267cfbCCD9A6bDb950F"
 }
 ```
-> [!NOTE] 
-> Environment Variables
-> 
-> DEFAULT_RPC_URL=
-> 
-> DEFAULT_SENDER=
-> 
-> DEFAULT_PRIVATE_KEY=
 
-## Deployment
+
+> [!NOTE] 
+> .env
+> |#|VAR|EXAMPLE|
+> |---|---|---|
+> |0|DEFAULT_PRIVATE_KEY|0xYourPrivateKey|
+
+***
+
+# Deployment
 
 ### Deployment steps (General)
 
 1) Populate the `deployment-config.json` with the required addresses.
 2) Populate the .env with the required environment variables.
-3) Run `deploy.sh` for an interactive deployment experience.
-4) Modify `deployed-addresses.json` manually. (Optional)
-5) Run `checksum.sh` for verification. (Optional)
+3) Modify `deployed-addresses.json` manually. (Optional)
+4) Run `forge script script/ChecksumScript.s.sol --rpc-url "YOUR_RPC_URL"` for verification. (Optional)
+
+> [!CAUTION]
+> Simulations may change the `deployed-addresses.json`
+>
+> Please make sure to review the configuration before each deploy.
 
 ***
 ## 1. Deploying the staker
@@ -109,6 +112,9 @@ Using the following components
 > Fee calculation code below.
 > An example numerical value of 250 denominates a 2.5% fee:
 
+
+
+
 ```solidity
 feePrecision = 1_00_00;
 fee = 250;
@@ -116,13 +122,18 @@ fee = 250;
 feeAmount = amount * fee / feePrecision;
 ```
 
+### Deploying using foundry
 
+Running the following script will attempt deployment on specified RPC provider.
+```bash
+forge script script/01_DeployStaker.s.sol  --rpc-url "YOUR_RPC_URL" --broadcast
+```
 
 See [general deployment](#deployment-steps-general) section for next steps
 
 
 ***
-## 2. Deploying the Airdrop Impl
+## 2. Deploying the Airdrop Implementation
 
 > [!CAUTION]
 >
@@ -140,12 +151,15 @@ See [general deployment](#deployment-steps-general) section for next steps
 |---|---|
 |-|-|
 
-
+Running the following script will attempt deployment on specified RPC provider.
+```bash
+forge script script/02_DeployAirdropImpl.s.sol  --rpc-url "YOUR_RPC_URL" --broadcast
+```
 
 See [general deployment](#deployment-steps-general) section for next steps
 ***
 
-## 3. Deploying the AirdropFactory
+## 3. Deploying the Airdrop Factory
 > [!NOTE]  
 >
 > If no airdrop implementation was deployed, the airdrop implementation address will be set to address zero.
@@ -160,14 +174,20 @@ See [general deployment](#deployment-steps-general) section for next steps
 |owner|The owner of the airdrop factory contract|
 
 
+
+Running the following script will attempt deployment on specified RPC provider.
+```bash
+forge script script/03_DeployAirdropFactory.s.sol  --rpc-url "YOUR_RPC_URL" --broadcast
+```
+
 See [general deployment](#deployment-steps-general) section for next steps
 
 ***
 
-## 4. Deploying the AirdropInstance
+## 4. Deploying the Airdrop Instance
 ### Prerequisites
 
-For `deploy-config,json`
+For `deploy-config.json`
 |input|description|
 |---|---|
 |owner|The owner of the airdrop factory contract|
@@ -178,6 +198,7 @@ For `deploy-config,json`
 
 For `deployed-addresses.json`
 |input|description|
+|---|---|
 |factory|The address of the factory used to deploy this airdrop|
 |staker|The address of the staker contract|
 
@@ -186,6 +207,11 @@ For `deployed-addresses.json`
 > through the AirdropFactory, and set the address of the staker to the staker instance.
 > 
 > It will also set the Staker's airdrop address to the newly deployed one.
+
+Running the following script will attempt deployment on specified RPC provider.
+```bash
+forge script script/04_DeployAirdrop.s.sol  --rpc-url "YOUR_RPC_URL" --broadcast
+```
 
 See [general deployment](#deployment-steps-general) section for next steps
 
@@ -206,9 +232,9 @@ graph TB
     
     Implementation["🎯 Airdrop Implementation<br/>An optimization technique to save gas when deploying multiple airdrops."]
     
-    AirdropInstance1["💧 Airdrop Instance 1<br/>Time-locked distributions<br/>Signature verification<br/>Penalty system"]
+    AirdropInstance1["💧 Airdrop Instance 1"]
     
-    AirdropInstance2["💧 Airdrop Instance 2<br/>Independent configuration<br/>Own unlock schedule<br/>Own treasury/signer"]
+    AirdropInstance2["💧 Airdrop Instance 2"]
     
     Staker["🥩 Staker Contract<br/> This contract allows you to lock tokens for 30d,</br>and then get just the earnings and keep staking.</br> Or just withdraw all of it and stop staking. The user may stake without locking but fees are applied."]
     
@@ -230,13 +256,14 @@ graph TB
     
     %% Core Flow
     AirdropInstance1 --> Staker
-    AirdropInstance1 --> Treasury
     AirdropInstance1 --> User
     
     %% Staker Operations
     User --> Staker
     Staker --> Treasury
     Staker --> User
+    Staker --> AirdropInstance2
+    AirdropInstance2 --> Staker
     
     %% Token Relationships
     Token1 --> AirdropInstance1
