@@ -8,4 +8,5 @@ evm_version = 'cancun'
 optimizer = true
 optimizer-runs = 99_999
 via_ir = true
+fs_permissions = [{ access = "read", path = "./"},{ access = "read-write", path = "./script/config/deployed-addresses.json"}]
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
