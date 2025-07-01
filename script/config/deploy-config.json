@@ -1,0 +1,19 @@
+{
+  "airdrop": {
+    "owner": "0xairdropOwnerAddress",
+    "treasury": "0xtreasuryAddress",
+    "signer": "0xsignerAddress",
+    "token": "0xtokenAddress",
+    "unlockTimestamps": [1754006400, 1756684800]
+  },
+  "factory": {
+    "owner": "0xfactoryOwnerAddress"
+  },
+  "staker": {
+    "owner": "0xstakerOwnerAddress",
+    "stakingToken": "0xstakingTokenAddress",
+    "treasury": "0xstakingTreasuryAddress",
+    "fee": 500,
+    "rewardTokens": ["0xrewardToken1Address, 0xrewardToken2Address"]
+  }
+}
