@@ -5,6 +5,14 @@ import {AirdropFactory} from "../src/AirdropFactory.sol";
 import "../test/utils/LogUtils.sol";
 
 contract DeployAirdropImpl is BaseDeployScript {
+    function setUp() public {
+        string memory rpcUrl = vm.envString("RPC_URL");
+
+        uint256 forkId = vm.createFork(rpcUrl);
+
+        vm.selectFork(forkId);
+    }
+
     function run() public returns (address implAddress) {
         bool _setFactorysImplementationToThis = false;
 

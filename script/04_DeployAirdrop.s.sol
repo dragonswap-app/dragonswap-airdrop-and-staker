@@ -7,6 +7,14 @@ import {BaseDeployScript} from "./base/BaseDeployScript.sol";
 import {console2} from "forge-std/console2.sol";
 
 contract DeployAirdrop is BaseDeployScript {
+    function setUp() public {
+        string memory rpcUrl = vm.envString("RPC_URL");
+
+        uint256 forkId = vm.createFork(rpcUrl);
+
+        vm.selectFork(forkId);
+    }
+
     function run() public returns (address airdropAddress) {
         string memory config = loadConfig();
 

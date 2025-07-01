@@ -6,6 +6,14 @@ import {BaseDeployScript} from "./base/BaseDeployScript.sol";
 import "../test/utils/LogUtils.sol";
 
 contract DeployFactory is BaseDeployScript {
+    function setUp() public {
+        string memory rpcUrl = vm.envString("RPC_URL");
+
+        uint256 forkId = vm.createFork(rpcUrl);
+
+        vm.selectFork(forkId);
+    }
+
     function run() public returns (address factoryAddress) {
         string memory config = loadConfig();
 
