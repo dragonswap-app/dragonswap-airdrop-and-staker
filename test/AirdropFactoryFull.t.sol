@@ -21,6 +21,8 @@ contract AirdropFactoryFullTest is Test {
     uint256 constant PRECISION = 1_00_00;
     uint256 constant DEFAULT_STAKER_FEE = 50_00; // 50% fee from staker
 
+    uint256 MINIMUM_DEPOSIT = 5 wei;
+
     Airdrop public airdropImpl;
     AirdropFactory public factory;
     ERC20Mock public token;
@@ -42,7 +44,7 @@ contract AirdropFactoryFullTest is Test {
         address[] memory rewardTokens = new address[](1);
         rewardTokens[0] = address(2);
         vm.prank(owner);
-        staker = new Staker(owner, address(token), treasury, DEFAULT_STAKER_FEE, rewardTokens);
+        staker = new Staker(owner, address(token), treasury, MINIMUM_DEPOSIT, DEFAULT_STAKER_FEE, rewardTokens);
         LogUtils.logInfo(string.concat("[TOKEN] ", vm.toString(address(token))));
         LogUtils.logInfo(string.concat("[TREASURY] ", vm.toString(address(treasury))));
 
@@ -121,7 +123,6 @@ contract AirdropFactoryFullTest is Test {
         address instance = factory.deploy(
             address(token),
             address(staker),
-            treasury,
             signer,
             address(0), // Should default to owner
             timestamps
@@ -140,7 +141,6 @@ contract AirdropFactoryFullTest is Test {
         Airdrop airdrop = Airdrop(instance);
         assertEq(address(airdrop.token()), address(token));
         assertEq(airdrop.staker(), address(staker));
-        assertEq(airdrop.treasury(), treasury);
         assertEq(airdrop.signer(), signer);
         assertEq(airdrop.owner(), owner); // Should default to factory owner
         assertEq(airdrop.unlocks(0), timestamps[0]);
@@ -155,7 +155,7 @@ contract AirdropFactoryFullTest is Test {
         address customOwner = makeAddr("customOwner");
 
         vm.prank(owner);
-        address instance = factory.deploy(address(token), address(staker), treasury, signer, customOwner, timestamps);
+        address instance = factory.deploy(address(token), address(staker), signer, customOwner, timestamps);
 
         Airdrop airdrop = Airdrop(instance);
         assertEq(airdrop.owner(), customOwner);
@@ -174,7 +174,7 @@ contract AirdropFactoryFullTest is Test {
         emit AirdropFactory.Deployed(address(instance), address(token), address(airdropImpl));
 
         vm.prank(owner);
-        factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        factory.deploy(address(token), address(staker), signer, owner, timestamps);
     }
 
     /* TEST: test_Deploy_RevertWhenNotOwner - - - - - - - - - - - - - - - - - - /
@@ -184,7 +184,7 @@ contract AirdropFactoryFullTest is Test {
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notOwner));
         vm.prank(notOwner);
-        factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        factory.deploy(address(token), address(staker), signer, owner, timestamps);
     }
 
     /* TEST: test_Deploy_RevertWhenImplementationNotSet - - - - - - - - - - - - -/
@@ -198,7 +198,7 @@ contract AirdropFactoryFullTest is Test {
 
         vm.expectRevert(AirdropFactory.ImplementationNotSet.selector);
         vm.prank(owner);
-        factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        factory.deploy(address(token), address(staker), signer, owner, timestamps);
     }
 
     /* TEST: test_Deploy_MultipleInstances - - - - - - - - - - - - - - - - - - - /
@@ -208,15 +208,15 @@ contract AirdropFactoryFullTest is Test {
 
         LogUtils.logInfo("Deploying first instance");
         vm.prank(owner);
-        address instance1 = factory.deploy(address(token), address(staker), treasury, signer, alice, timestamps);
+        address instance1 = factory.deploy(address(token), address(staker), signer, alice, timestamps);
 
         LogUtils.logInfo("Deploying second instance");
         vm.prank(owner);
-        address instance2 = factory.deploy(address(token), address(staker), treasury, signer, bob, timestamps);
+        address instance2 = factory.deploy(address(token), address(staker), signer, bob, timestamps);
 
         LogUtils.logInfo("Deploying third instance");
         vm.prank(owner);
-        address instance3 = factory.deploy(address(token), address(staker), treasury, signer, charlie, timestamps);
+        address instance3 = factory.deploy(address(token), address(staker), signer, charlie, timestamps);
 
         // Verify all deployments
         assertEq(factory.noOfDeployments(), 3);
@@ -239,11 +239,11 @@ contract AirdropFactoryFullTest is Test {
         assertEq(factory.noOfDeployments(), 0);
 
         vm.prank(owner);
-        factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        factory.deploy(address(token), address(staker), signer, owner, timestamps);
         assertEq(factory.noOfDeployments(), 1);
 
         vm.prank(owner);
-        factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        factory.deploy(address(token), address(staker), signer, owner, timestamps);
         assertEq(factory.noOfDeployments(), 2);
     }
 
@@ -261,11 +261,11 @@ contract AirdropFactoryFullTest is Test {
         LogUtils.logDebug("Testing getLatestDeployment with deployments");
 
         vm.prank(owner);
-        address instance1 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance1 = factory.deploy(address(token), address(staker), signer, owner, timestamps);
         assertEq(factory.getLatestDeployment(), instance1);
 
         vm.prank(owner);
-        address instance2 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance2 = factory.deploy(address(token), address(staker), signer, owner, timestamps);
         assertEq(factory.getLatestDeployment(), instance2);
     }
 
@@ -278,7 +278,7 @@ contract AirdropFactoryFullTest is Test {
         address[] memory instances = new address[](5);
         for (uint256 i = 0; i < 5; i++) {
             vm.prank(owner);
-            instances[i] = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+            instances[i] = factory.deploy(address(token), address(staker), signer, owner, timestamps);
         }
 
         // Get deployments from index 1 to 3
@@ -303,7 +303,7 @@ contract AirdropFactoryFullTest is Test {
         LogUtils.logDebug("Testing getDeployments with single element");
 
         vm.prank(owner);
-        address instance = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance = factory.deploy(address(token), address(staker), signer, owner, timestamps);
 
         address[] memory deployments = factory.getDeployments(0, 0);
         assertEq(deployments.length, 1);
@@ -318,7 +318,7 @@ contract AirdropFactoryFullTest is Test {
         // Deploy 3 instances
         for (uint256 i = 0; i < 3; i++) {
             vm.prank(owner);
-            factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+            factory.deploy(address(token), address(staker), signer, owner, timestamps);
         }
 
         // Test endIndex < startIndex
@@ -344,7 +344,7 @@ contract AirdropFactoryFullTest is Test {
 
         // Deploy through factory
         vm.prank(owner);
-        address factoryDeployment = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address factoryDeployment = factory.deploy(address(token), address(staker), signer, owner, timestamps);
 
         // Deploy directly (not through factory)
         Airdrop directDeployment = new Airdrop();
@@ -362,7 +362,7 @@ contract AirdropFactoryFullTest is Test {
 
         // Deploy with first implementation
         vm.prank(owner);
-        address instance1 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance1 = factory.deploy(address(token), address(staker), signer, owner, timestamps);
         assertEq(factory.deploymentToImplementation(instance1), address(airdropImpl));
 
         // Change implementation
@@ -372,7 +372,7 @@ contract AirdropFactoryFullTest is Test {
 
         // Deploy with new implementation
         vm.prank(owner);
-        address instance2 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance2 = factory.deploy(address(token), address(staker), signer, owner, timestamps);
         assertEq(factory.deploymentToImplementation(instance2), address(newImpl));
 
         // Verify first deployment still points to old implementation
@@ -390,7 +390,6 @@ contract AirdropFactoryFullTest is Test {
         factory.deploy(
             address(0), // Invalid token address
             address(staker),
-            treasury,
             signer,
             owner,
             timestamps
@@ -406,11 +405,11 @@ contract AirdropFactoryFullTest is Test {
         LogUtils.logDebug("Testing deployments array direct access");
 
         vm.prank(owner);
-        address instance1 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance1 = factory.deploy(address(token), address(staker), signer, owner, timestamps);
         vm.prank(owner);
-        address instance2 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance2 = factory.deploy(address(token), address(staker), signer, owner, timestamps);
         vm.prank(owner);
-        address instance3 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance3 = factory.deploy(address(token), address(staker), signer, owner, timestamps);
 
         assertEq(factory.deployments(0), instance1);
         assertEq(factory.deployments(1), instance2);
@@ -423,9 +422,9 @@ contract AirdropFactoryFullTest is Test {
         LogUtils.logDebug("Testing clone pattern implementation");
 
         vm.prank(owner);
-        address instance1 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance1 = factory.deploy(address(token), address(staker), signer, owner, timestamps);
         vm.prank(owner);
-        address instance2 = factory.deploy(address(token), address(staker), treasury, signer, owner, timestamps);
+        address instance2 = factory.deploy(address(token), address(staker), signer, owner, timestamps);
 
         // Verify instances are different addresses
         assertTrue(instance1 != instance2);
@@ -448,5 +447,117 @@ contract AirdropFactoryFullTest is Test {
         assertEq(codeSize1, 45);
         assertEq(codeSize2, 45);
         assertEq(codeSize1, codeSize2);
+    }
+    /* TEST: test_Debug_DecodeError - - - - - - - - - - - - - - - - - - - - - - - -/
+    * Decode the exact 4-byte error from initialization - - - - - - - - - - - - */
+
+    function test_Debug_DecodeError() public {
+        LogUtils.logDebug("=== DECODING INITIALIZATION ERROR ===");
+
+        Airdrop directAirdrop = new Airdrop();
+
+        try directAirdrop.initialize(address(token), address(staker), signer, owner, timestamps) {
+            LogUtils.logDebug(" Initialization succeeded");
+        } catch (bytes memory lowLevelData) {
+            LogUtils.logDebug(" Initialization failed");
+            LogUtils.logDebug(string.concat("Error data length: ", vm.toString(lowLevelData.length)));
+
+            if (lowLevelData.length >= 4) {
+                // Extract the 4-byte error selector
+                bytes4 errorSelector;
+                assembly {
+                    errorSelector := mload(add(lowLevelData, 0x20))
+                }
+                LogUtils.logDebug(string.concat("Error selector: 0x", vm.toString(uint256(uint32(errorSelector)))));
+
+                // Check common error selectors
+                bytes4 notOwnerSelector = bytes4(keccak256("OwnableUnauthorizedAccount(address)"));
+                bytes4 initializedSelector = bytes4(keccak256("InvalidInitialization()"));
+                bytes4 alreadyInitializedSelector = bytes4(keccak256("AlreadyInitialized()"));
+
+                LogUtils.logDebug(
+                    string.concat(
+                        "OwnableUnauthorizedAccount selector: 0x", vm.toString(uint256(uint32(notOwnerSelector)))
+                    )
+                );
+                LogUtils.logDebug(
+                    string.concat(
+                        "InvalidInitialization selector: 0x", vm.toString(uint256(uint32(initializedSelector)))
+                    )
+                );
+                LogUtils.logDebug(
+                    string.concat(
+                        "AlreadyInitialized selector: 0x", vm.toString(uint256(uint32(alreadyInitializedSelector)))
+                    )
+                );
+
+                if (errorSelector == notOwnerSelector) {
+                    LogUtils.logDebug("ERROR: OwnableUnauthorizedAccount - ownership issue");
+                } else if (errorSelector == initializedSelector) {
+                    LogUtils.logDebug("ERROR: InvalidInitialization - initialization state issue");
+                } else if (errorSelector == alreadyInitializedSelector) {
+                    LogUtils.logDebug("ERROR: AlreadyInitialized - contract already initialized");
+                } else {
+                    LogUtils.logDebug("ERROR: Unknown custom error");
+                }
+            }
+        }
+    }
+
+    /* TEST: test_Debug_ParameterValidation - - - - - - - - - - - - - - - - - - - -/
+    * Test each parameter individually to isolate the issue - - - - - - - - - - */
+    function test_Debug_ParameterValidation() public {
+        LogUtils.logDebug("=== PARAMETER VALIDATION ===");
+
+        // Check if any of our parameters are causing issues
+        LogUtils.logDebug("Checking each parameter:");
+        LogUtils.logDebug(string.concat("Token address: ", vm.toString(address(token))));
+        LogUtils.logDebug(string.concat("Token is contract: ", address(token).code.length > 0 ? "true" : "false"));
+
+        LogUtils.logDebug(string.concat("Staker address: ", vm.toString(address(staker))));
+        LogUtils.logDebug(string.concat("Staker is contract: ", address(staker).code.length > 0 ? "true" : "false"));
+
+        LogUtils.logDebug(string.concat("Treasury address: ", vm.toString(treasury)));
+        LogUtils.logDebug(string.concat("Treasury is contract: ", treasury.code.length > 0 ? "true" : "false"));
+
+        LogUtils.logDebug(string.concat("Signer address: ", vm.toString(signer)));
+        LogUtils.logDebug(string.concat("Signer is contract: ", signer.code.length > 0 ? "true" : "false"));
+
+        LogUtils.logDebug(string.concat("Owner address: ", vm.toString(owner)));
+        LogUtils.logDebug(string.concat("Owner is contract: ", owner.code.length > 0 ? "true" : "false"));
+
+        LogUtils.logDebug(string.concat("Timestamps array length: ", vm.toString(timestamps.length)));
+        for (uint256 i = 0; i < timestamps.length; i++) {
+            LogUtils.logDebug(string.concat("Timestamp[", vm.toString(i), "]: ", vm.toString(timestamps[i])));
+            LogUtils.logDebug(string.concat("Current block.timestamp: ", vm.toString(block.timestamp)));
+            LogUtils.logDebug(
+                string.concat("Is future timestamp: ", timestamps[i] > block.timestamp ? "true" : "false")
+            );
+        }
+    }
+
+    /* TEST: test_Debug_CheckInitializeFunction - - - - - - - - - - - - - - - - - -/
+    * Verify the initialize function exists with correct signature - - - - - - - */
+    function test_Debug_CheckInitializeFunction() public {
+        LogUtils.logDebug("=== CHECKING INITIALIZE FUNCTION ===");
+
+        bytes4 expectedSelector = bytes4(keccak256("initialize(address,address,address,address,address,uint256[])"));
+        LogUtils.logDebug(
+            string.concat("Expected initialize selector: 0x", vm.toString(uint256(uint32(expectedSelector))))
+        );
+
+        // Try to call with staticcall to check if function exists
+        Airdrop directAirdrop = new Airdrop();
+        bytes memory data =
+            abi.encodeWithSelector(expectedSelector, address(token), address(staker), signer, owner, timestamps);
+
+        LogUtils.logDebug("Attempting call to initialize function...");
+        (bool success, bytes memory result) = address(directAirdrop).call(data);
+        LogUtils.logDebug(string.concat("Call success: ", success ? "true" : "false"));
+        LogUtils.logDebug(string.concat("Result length: ", vm.toString(result.length)));
+
+        if (!success && result.length == 0) {
+            LogUtils.logDebug("ERROR: Function does not exist or has wrong signature");
+        }
     }
 }
