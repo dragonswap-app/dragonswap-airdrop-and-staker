@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import {Staker} from "../src/Staker.sol";
 import {BaseDeployScript} from "./base/BaseDeployScript.sol";
-import {DeploymentConfig} from "./config/DeploymentConfig.sol";
 import {console2} from "forge-std/console2.sol";
 import "../test/utils/LogUtils.sol";
 
