@@ -26,7 +26,7 @@ contract AirdropFullTest is Test {
     uint256 constant PRECISION = 1_00_00;
     uint256 constant MINIMUM_DEPOSIT = 5 wei;
     uint256 constant DEFAULT_STAKER_FEE = 50_00; // 50% fee from staker
-    uint256 DECADE22TIMESTAMP = 400102528271;
+    uint256 CENTURY22TIMESTAMP = 400102528271;
 
     Airdrop public airdropImpl;
     AirdropFactory public factory;
@@ -434,7 +434,7 @@ contract AirdropFullTest is Test {
 
         LogUtils.logDebug("Acquiring hash");
         bytes32 hash = keccak256(
-            abi.encode(address(airdrop), block.chainid, alice, true, ALICE_PORTION, DECADE22TIMESTAMP)
+            abi.encode(address(airdrop), block.chainid, alice, true, ALICE_PORTION, CENTURY22TIMESTAMP)
         ).toEthSignedMessageHash();
 
         LogUtils.logDebug(string.concat("signing the hash with private key: ", vm.toString(signerPrivateKey)));
@@ -455,7 +455,7 @@ contract AirdropFullTest is Test {
         vm.expectEmit();
         emit Airdrop.WalletWithdrawal(alice, expectedReceived, expectedPenalty);
         LogUtils.logDebug("Withdrawing funds");
-        airdrop.withdraw(true, false, DECADE22TIMESTAMP, signature); // Updated to match function signature
+        airdrop.withdraw(true, false, CENTURY22TIMESTAMP, signature); // Updated to match function signature
 
         LogUtils.logDebug("Asserting conditions");
         assertEq(token.balanceOf(alice), aliceBalanceBefore + expectedReceived);
@@ -482,7 +482,7 @@ contract AirdropFullTest is Test {
         vm.warp(timestamps[0] + 1);
 
         bytes32 hash = keccak256(
-            abi.encode(address(airdrop), block.chainid, alice, false, ALICE_PORTION, DECADE22TIMESTAMP)
+            abi.encode(address(airdrop), block.chainid, alice, false, ALICE_PORTION, CENTURY22TIMESTAMP)
         ).toEthSignedMessageHash();
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
@@ -491,7 +491,7 @@ contract AirdropFullTest is Test {
         vm.prank(alice);
         vm.expectEmit();
         emit Airdrop.StakerWithdrawal(alice, ALICE_PORTION, true); // Updated event signature
-        airdrop.withdraw(false, true, DECADE22TIMESTAMP, signature); // toWallet=false, locking=true
+        airdrop.withdraw(false, true, CENTURY22TIMESTAMP, signature); // toWallet=false, locking=true
 
         /* Verify portion was deleted */
         assertEq(airdrop.portions(0, alice), 0);
@@ -516,7 +516,7 @@ contract AirdropFullTest is Test {
 
         /* Don't warp past unlock time, so no portions are available */
 
-        bytes32 hash = keccak256(abi.encode(address(airdrop), block.chainid, alice, true, 0, DECADE22TIMESTAMP))
+        bytes32 hash = keccak256(abi.encode(address(airdrop), block.chainid, alice, true, 0, CENTURY22TIMESTAMP))
             .toEthSignedMessageHash();
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
@@ -524,7 +524,7 @@ contract AirdropFullTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(Airdrop.TotalZero.selector);
-        airdrop.withdraw(true, false, DECADE22TIMESTAMP, signature);
+        airdrop.withdraw(true, false, CENTURY22TIMESTAMP, signature);
     }
 
     /* TEST: test_Withdraw_RevertWhenSignatureInvalid - - - - - - - - - - - - - /
@@ -553,7 +553,7 @@ contract AirdropFullTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(Airdrop.SignatureInvalid.selector);
-        airdrop.withdraw(true, false, DECADE22TIMESTAMP, invalidSignature);
+        airdrop.withdraw(true, false, CENTURY22TIMESTAMP, invalidSignature);
     }
 
     /* TEST: test_cleanUpUnclaimedPortions - - - - - - - - - - - - - - - - - - -/

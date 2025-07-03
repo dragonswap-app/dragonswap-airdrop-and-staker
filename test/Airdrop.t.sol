@@ -13,7 +13,7 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract AirdropTest is Test {
     uint256 MINIMUM_DEPOSIT = 5 wei;
-    uint256 DECADE22TIMESTAMP = 4102528271;
+    uint256 CENTURY22TIMESTAMP = 4102528271;
 
     using MessageHashUtils for bytes32;
 
@@ -69,13 +69,13 @@ contract AirdropTest is Test {
         // Withdraw
         bool toWallet = true;
         bytes32 hash = keccak256(
-            abi.encode(address(instance), block.chainid, user, toWallet, amounts[0], DECADE22TIMESTAMP)
+            abi.encode(address(instance), block.chainid, user, toWallet, amounts[0], CENTURY22TIMESTAMP)
         ).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signer, hash);
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.prank(user);
         vm.warp(block.timestamp + 11);
-        instance.withdraw(toWallet, false, DECADE22TIMESTAMP, signature);
+        instance.withdraw(toWallet, false, CENTURY22TIMESTAMP, signature);
         uint256 penalty = amounts[0] * staker.fee() / 1_00_00;
         assertEq(token.balanceOf(user), amounts[0] - penalty);
         assertEq(token.balanceOf(address(3)), penalty);
