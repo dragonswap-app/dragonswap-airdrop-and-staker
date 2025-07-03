@@ -6,7 +6,7 @@ import {Staker} from "../src/Staker.sol";
 import {BaseDeployScript} from "./base/BaseDeployScript.sol";
 import {console2} from "forge-std/console2.sol";
 
-contract DeployAirdrop is BaseDeployScript {
+contract DeployAirdropAndSetStakerAirdrop is BaseDeployScript {
     function setUp() public {
         string memory rpcUrl = vm.envString("RPC_URL");
 
