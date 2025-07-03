@@ -7,6 +7,8 @@ import {BaseDeployScript} from "./base/BaseDeployScript.sol";
 import {console2} from "forge-std/console2.sol";
 
 contract DeployAirdropAndSetStakerAirdrop is BaseDeployScript {
+    error DeployAirdropAndSetStakerAirdrop__FactoryDoesNotExist();
+
     function setUp() public {
         string memory rpcUrl = vm.envString("RPC_URL");
 
@@ -17,6 +19,10 @@ contract DeployAirdropAndSetStakerAirdrop is BaseDeployScript {
 
     function run() public returns (address airdropAddress) {
         string memory config = loadConfig();
+
+        if (!hasAddress("factory")) {
+            revert DeployAirdropAndSetStakerAirdrop__FactoryDoesNotExist();
+        }
 
         // Get factory address
         address factoryAddress = getAddress("factory");
