@@ -1,19 +1,19 @@
 {
   "airdrop": {
-    "owner": "0xairdropOwnerAddress",
-    "treasury": "0xtreasuryAddress",
-    "signer": "0xsignerAddress",
-    "token": "0xtokenAddress",
-    "unlockTimestamps": [1754006400, 1756684800]
+    "owner": "",
+    "treasury": "",
+    "signer": "",
+    "token": "",
+    "unlockTimestamps": []
   },
   "factory": {
-    "owner": "0xfactoryOwnerAddress"
+    "owner": ""
   },
   "staker": {
-    "owner": "0xstakerOwnerAddress",
-    "stakingToken": "0xstakingTokenAddress",
-    "treasury": "0xstakingTreasuryAddress",
-    "fee": 500,
-    "rewardTokens": ["0xrewardToken1Address, 0xrewardToken2Address"]
+    "owner": "",
+    "stakingToken": "",
+    "treasury": "",
+    "fee": 0,
+    "rewardTokens": []
   }
 }
