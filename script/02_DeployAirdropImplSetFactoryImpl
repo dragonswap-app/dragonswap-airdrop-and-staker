@@ -4,21 +4,10 @@ import {BaseDeployScript} from "./base/BaseDeployScript.sol";
 import {AirdropFactory} from "../src/AirdropFactory.sol";
 import "../test/utils/LogUtils.sol";
 
-contract DeployAirdropImpl is BaseDeployScript {
-    function setUp() public {
-        string memory rpcUrl = vm.envString("RPC_URL");
-
-        uint256 forkId = vm.createFork(rpcUrl);
-
-        vm.selectFork(forkId);
-    }
-
+contract DeployAirdropImplAndSetFactoryImpl is BaseDeployScript {
     function run() public returns (address implAddress) {
-        bool _setFactorysImplementationToThis = false;
-
         // Check if factory address exists
-        // If it already exists, and the airdropImpl is 0x0
-        // Overwrite it
+        // If it already exists, overwrite it's airdrop implementation
 
         if (hasAddress("factory")) {
             LogUtils.logInfo(
@@ -31,13 +20,6 @@ contract DeployAirdropImpl is BaseDeployScript {
             LogUtils.logInfo(
                 string.concat("Current implementation address: ", vm.toString(previousFactory.implementation()))
             );
-
-            // If the address is something else, don't set the implementation
-            // change this line / delete this if you're sure you want to overwrite the
-            // implementation
-            if (previousFactory.implementation() == address(0x0)) {
-                _setFactorysImplementationToThis = true;
-            }
         } else {
             LogUtils.logInfo("Factory has not been deployed. Only deploying the airdropImpl.");
         }
@@ -49,7 +31,7 @@ contract DeployAirdropImpl is BaseDeployScript {
 
         implAddress = address(airdropImpl);
 
-        if (_setFactorysImplementationToThis) {
+        if (hasAddress("factory")) {
             AirdropFactory(getAddress("factory")).setImplementation(implAddress);
 
             LogUtils.logSuccess(string.concat("Set deployed factory's implementation to ", vm.toString(implAddress)));
