@@ -37,10 +37,6 @@ contract DeployStaker is BaseDeployScript {
         uint256 minimumDeposit = vm.parseJsonUint(config, ".staker.minimumDeposit");
         LogUtils.logInfo(string.concat("Minimum deposit set to ", vm.toString(minimumDeposit)));
 
-        if (hasAddress("airdrop")) {
-            LogUtils.logDebug("AIRDROP ADDRESS EXISTS");
-        }
-
         address[] memory rewardTokens = vm.parseJsonAddressArray(config, ".staker.rewardTokens");
 
         for (uint256 i = 0; i < rewardTokens.length; i++) {
@@ -58,6 +54,7 @@ contract DeployStaker is BaseDeployScript {
 
         // Check if existing airdrop available and assign
         if (hasAddress("airdrop")) {
+            LogUtils.logDebug("AIRDROP ADDRESS EXISTS");
             airdropAddress = getAddress("airdrop");
             LogUtils.logInfo(string.concat("Setting existing airdrop address to staker: ", vm.toString(airdropAddress)));
             staker.setAirdropAddress(airdropAddress);
