@@ -79,16 +79,10 @@ abstract contract BaseDeployScript is Script {
 
     function hasAddress(string memory key) internal view returns (bool) {
         try vm.readFile(ADDRESSES_PATH) returns (string memory json) {
-            // Try new format first
             try vm.parseJsonAddress(json, string.concat(".", key)) returns (address) {
                 return true;
             } catch {
-                // Try legacy format
-                try vm.parseJsonAddress(json, string.concat(".", key)) returns (address) {
-                    return true;
-                } catch {
-                    return false;
-                }
+                return false;
             }
         } catch {
             return false;
