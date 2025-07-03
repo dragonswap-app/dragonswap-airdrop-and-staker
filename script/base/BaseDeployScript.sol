@@ -28,6 +28,8 @@ abstract contract BaseDeployScript is Script {
         string memory existingJson = loadAddresses();
         string memory finalJson;
 
+        bool keyExists = false;
+
         // Check if we have an empty json file, simple write and return if yes
         if (bytes(existingJson).length <= 2) {
             finalJson = vm.serializeAddress("", key, addr);
@@ -41,6 +43,8 @@ abstract contract BaseDeployScript is Script {
         // Serialize all existing keys
         for (uint256 i = 0; i < keys.length; i++) {
             if (keccak256(bytes(keys[i])) == keccak256(bytes(key))) {
+                // Prevent key from being created again if already existent
+                keyExists = true;
                 // Update existing key
                 finalJson = vm.serializeAddress("", keys[i], addr);
             } else {
@@ -50,14 +54,6 @@ abstract contract BaseDeployScript is Script {
             }
         }
 
-        // Add new key if it doesn't exist
-        bool keyExists = false;
-        for (uint256 i = 0; i < keys.length; i++) {
-            if (keccak256(bytes(keys[i])) == keccak256(bytes(key))) {
-                keyExists = true;
-                break;
-            }
-        }
         if (!keyExists) {
             finalJson = vm.serializeAddress("", key, addr);
         }
