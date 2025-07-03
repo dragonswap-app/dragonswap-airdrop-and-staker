@@ -64,16 +64,10 @@ abstract contract BaseDeployScript is Script {
     function getAddress(string memory key) internal view returns (address) {
         string memory json = loadAddresses();
 
-        // Try new format first
         try vm.parseJsonAddress(json, string.concat(".", key)) returns (address addr) {
             return addr;
         } catch {
-            // Try legacy format
-            try vm.parseJsonAddress(json, string.concat(".", key)) returns (address addr) {
-                return addr;
-            } catch {
-                revert(string.concat("Address not found for key: ", key));
-            }
+            revert(string.concat("Address not found for key: ", key));
         }
     }
 
