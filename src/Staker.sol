@@ -51,7 +51,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     uint256 private constant MAX_FEE = 90_00;
 
     /// Events
-    event Deposit(address indexed funder, address indexed account, uint256 amount, bool indexed locked);
+    event Deposit(address indexed funder, address indexed account, uint256 amount, bool indexed locked, uint256 stakeIndex);
     event StakeLocked(address indexed user, uint256 stakeIndex);
     event Withdraw(address indexed user, uint256 stakeIndex, address indexed receiver, uint256 feeAmount);
     event EmergencyWithdraw(address indexed user, uint256 stakeIndex, address indexed receiver, uint256 feeAmount);
@@ -194,7 +194,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         // Transfer tokens
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Deposit(msg.sender, account, amount, locking);
+        emit Deposit(msg.sender, account, amount, locking, numberOfStakesOwnedByAnAccount);
     }
 
     /**
