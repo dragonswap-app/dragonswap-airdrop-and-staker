@@ -188,7 +188,7 @@ For `deployed-addresses.json`
 |staker|The address of the staker contract|
 
 > [!IMPORTANT]
-> Deploying this script will cause the airdrop instance to be deployed under these parameters
+> Running this script will cause the airdrop instance to be deployed under these parameters
 > through the AirdropFactory, and set the address of the staker to the staker instance.
 > 
 > It will also set the Staker's airdrop address to the newly deployed one.
