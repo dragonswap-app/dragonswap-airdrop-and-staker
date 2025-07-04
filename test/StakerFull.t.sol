@@ -1316,7 +1316,7 @@ contract StakerFullTest is Test {
             rewardToken1.mint(address(staker), rewardPerRound);
 
             // Measure gas on final iteration
-            if (i == smallStakeCount - 1) {
+            if (i == largeStakeCount - 1) {
                 uint256[] memory stakeIndexes = new uint256[](1);
                 stakeIndexes[0] = 0; // Claim only first stake
 
