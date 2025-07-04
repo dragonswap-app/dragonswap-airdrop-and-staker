@@ -13,10 +13,12 @@ contract StakerFullTest is Test {
     address public alice = address(0xA11CE);
     address public bob = address(0xB0B);
     address public charlie = address(0xCACCE);
+    address public dave = address(0xDA7E);
 
     uint256 public constant ALICE_STAKE = 10_000 * 10 ** 18;
     uint256 public constant BOB_STAKE = 20_000 * 10 ** 18;
     uint256 public constant CHARLIE_STAKE = 30_000 * 10 ** 18;
+    uint256 public constant DAVE_STAKE = 40_000 * 10 ** 18;
     uint256 public constant MINIMUM_DEPOSIT = 1 wei;
 
     uint256 constant PRECISION = 1_00_00;
@@ -59,6 +61,7 @@ contract StakerFullTest is Test {
         stakingToken.mint(alice, ALICE_STAKE * 10);
         stakingToken.mint(bob, BOB_STAKE * 10);
         stakingToken.mint(charlie, CHARLIE_STAKE * 10);
+        stakingToken.mint(dave, DAVE_STAKE * 10);
 
         LogUtils.logInfo("Setting up approvals");
         vm.prank(alice);
@@ -66,6 +69,8 @@ contract StakerFullTest is Test {
         vm.prank(bob);
         stakingToken.approve(address(staker), type(uint256).max);
         vm.prank(charlie);
+        stakingToken.approve(address(staker), type(uint256).max);
+        vm.prank(dave);
         stakingToken.approve(address(staker), type(uint256).max);
     }
 
@@ -1246,14 +1251,21 @@ contract StakerFullTest is Test {
         // Mint additional tokens for gas test
         stakingToken.mint(alice, ALICE_STAKE * 5000);
         stakingToken.mint(bob, BOB_STAKE * 5000);
+        stakingToken.mint(charlie, CHARLIE_STAKE * 5000);
+        stakingToken.mint(dave, DAVE_STAKE * 5000);
 
-        uint256 stakeCount = 3000;
+        uint256 smallStakeCount = 10;
+        uint256 largeStakeCount = 7000;
+
+        uint256 smallStakeClaimDeltaGas;
+        uint256 largeStakeClaimDeltaGas;
+
         uint256 stakeAmount = 100 * 10 ** 18;
         uint256 rewardPerRound = 1000 * 10 ** 18;
 
-        LogUtils.logInfo(string.concat("Creating ", vm.toString(stakeCount), " stakes to test gas consumption"));
+        LogUtils.logInfo(string.concat("Creating ", vm.toString(smallStakeCount), " stakes to test gas consumption"));
 
-        for (uint256 i = 0; i < stakeCount; i++) {
+        for (uint256 i = 0; i < smallStakeCount; i++) {
             // Alice stakes
             vm.prank(alice);
             staker.stake(alice, stakeAmount, false);
@@ -1266,7 +1278,7 @@ contract StakerFullTest is Test {
             rewardToken1.mint(address(staker), rewardPerRound);
 
             // Measure gas on final iteration
-            if (i == stakeCount - 1) {
+            if (i == smallStakeCount - 1) {
                 uint256[] memory stakeIndexes = new uint256[](1);
                 stakeIndexes[0] = 0; // Claim only first stake
 
@@ -1274,11 +1286,12 @@ contract StakerFullTest is Test {
                 vm.prank(alice);
                 staker.claimEarnings(stakeIndexes, address(0x0));
                 uint256 gasUsed = gasBefore - gasleft();
+                smallStakeClaimDeltaGas = gasUsed;
 
                 LogUtils.logInfo(
                     string.concat(
                         "Gas used for claimEarnings with ",
-                        vm.toString(stakeCount),
+                        vm.toString(smallStakeCount),
                         " total stakes: ",
                         vm.toString(gasUsed)
                     )
@@ -1290,6 +1303,51 @@ contract StakerFullTest is Test {
             }
         }
 
+        for (uint256 i = 0; i < largeStakeCount; i++) {
+            // Charlie stakes
+            vm.prank(charlie);
+            staker.stake(charlie, stakeAmount, false);
+
+            // dave stakes
+            vm.prank(dave);
+            staker.stake(dave, stakeAmount, false);
+
+            // Distribute rewards
+            rewardToken1.mint(address(staker), rewardPerRound);
+
+            // Measure gas on final iteration
+            if (i == smallStakeCount - 1) {
+                uint256[] memory stakeIndexes = new uint256[](1);
+                stakeIndexes[0] = 0; // Claim only first stake
+
+                uint256 gasBefore = gasleft();
+                vm.prank(charlie);
+                staker.claimEarnings(stakeIndexes, address(0x0));
+                uint256 gasUsed = gasBefore - gasleft();
+
+                largeStakeClaimDeltaGas = gasUsed;
+
+                LogUtils.logInfo(
+                    string.concat(
+                        "Gas used for claimEarnings with ",
+                        vm.toString(largeStakeCount),
+                        " total stakes: ",
+                        vm.toString(gasUsed)
+                    )
+                );
+
+                // Assert reasonable gas consumption
+                // This test may fail if there's a gas DoS vulnerability
+                assertLt(gasUsed, 1_000_000, "Gas leak - potential DoS vulnerability");
+            }
+        }
+
+        assertLt(
+            largeStakeClaimDeltaGas >= smallStakeClaimDeltaGas
+                ? largeStakeClaimDeltaGas - smallStakeClaimDeltaGas
+                : smallStakeClaimDeltaGas - largeStakeClaimDeltaGas,
+            30_000
+        );
         LogUtils.logInfo("Gas consumption test completed");
     }
 }
