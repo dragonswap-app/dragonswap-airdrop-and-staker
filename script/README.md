@@ -33,22 +33,22 @@ Using the following components
 ```json
 {
   "airdrop": {
-    "owner": "0x1AFb6347B42aDc71D8C02DC43a3307f46E7F061D",
-    "treasury": "0x1AFb6347B42aDc71D8C02DC43a3307f46E7F061D",
-    "signer": "0x1AFb6347B42aDc71D8C02DC43a3307f46E7F061D",
-    "token": "0xC850Ad7Bd0cc903a2B470Af6eFA7d1043571C095",
-    "unlockTimestamps": [1754006400, 1756684800]
+    "owner": "0airdropowner",
+    "treasury": "0xtreasury",
+    "signer": "0xsigner",
+    "token": "0xtoken",
+    "unlockTimestamps": []
   },
   "factory": {
-    "owner": "0x1AFb6347B42aDc71D8C02DC43a3307f46E7F061D"
+    "owner": "0xfactory"
   },
   "staker": {
-    "owner": "0x1AFb6347B42aDc71D8C02DC43a3307f46E7F061D",
-    "stakingToken": "0xC850Ad7Bd0cc903a2B470Af6eFA7d1043571C095",
+    "owner": "0xowner",
+    "stakingToken": "0xstakingtoken",
     "minimumDeposit": 300,
-    "treasury": "0x1AFb6347B42aDc71D8C02DC43a3307f46E7F061D",
+    "treasury": "0xtreasury",
     "fee": 1000,
-    "rewardTokens": ["0xC850Ad7Bd0cc903a2B470Af6eFA7d1043571C095"]
+    "rewardTokens": ["0xtoken"]
   }
 }
 ```
