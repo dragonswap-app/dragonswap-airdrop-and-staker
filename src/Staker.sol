@@ -55,7 +55,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     event StakeLocked(address indexed user, uint256 stakeIndex);
     event Withdraw(address indexed user, uint256 stakeIndex, address indexed receiver, uint256 feeAmount);
     event EmergencyWithdraw(address indexed user, uint256 stakeIndex, address indexed receiver, uint256 feeAmount);
-    event Payout(address indexed user, IERC20 indexed rewardToken, uint256 amount);
+    event Payout(address indexed user, IERC20 indexed rewardToken, uint256 amount, uint256 stakeIndex);
     event RewardTokenAdded(address indexed token);
     event RewardTokenRemoved(address indexed token);
     event Swept(address indexed token, address indexed to, uint256 amount);
@@ -271,7 +271,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
                 rewardDebt[rewardDebtHash] = accumulated;
 
                 if (pending != 0) {
-                    _payout(IERC20(token), pending, receiver);
+                    _payout(IERC20(token), pending, receiver, stakeIndex);
                 }
             }
         }
@@ -312,7 +312,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
                 delete rewardDebt[rewardDebtHash];
 
                 if (pending != 0) {
-                    _payout(IERC20(token), pending, receiver);
+                    _payout(IERC20(token), pending, receiver, stakeIndex);
                 }
             }
 
@@ -484,12 +484,12 @@ contract Staker is Ownable, ReentrancyGuardTransient {
         lastRewardBalance[token] = rewardBalance;
     }
 
-    function _payout(IERC20 token, uint256 pending, address receiver) private {
+    function _payout(IERC20 token, uint256 pending, address receiver, uint256 stakeIndex) private {
         uint256 currRewardBalance = token.balanceOf(address(this));
         uint256 rewardBalance = token == stakingToken ? currRewardBalance - totalDeposits : currRewardBalance;
         if (pending > rewardBalance) revert InsufficientRewards();
         lastRewardBalance[address(token)] -= pending;
         token.safeTransfer(receiver, pending);
-        emit Payout(receiver, token, pending);
+        emit Payout(receiver, token, pending, stakeIndex);
     }
 }
