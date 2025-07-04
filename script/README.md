@@ -107,21 +107,6 @@ Using the following components
 |rewardTokens|Array of reward token addresses|
 
 
-
-> [!IMPORTANT] 
-> Fee calculation code below.
-> An example numerical value of 250 denominates a 2.5% fee:
-
-
-
-
-```solidity
-feePrecision = 1_00_00;
-fee = 250;
-
-feeAmount = amount * fee / feePrecision;
-```
-
 ### Deploying using foundry
 
 Running the following script will attempt deployment on specified RPC provider.
