@@ -9,8 +9,6 @@ contract DeployAirdropImplAndSetFactoryImpl is BaseDeployScript {
         // Check if factory address exists
         // If it already exists, overwrite it's airdrop implementation
 
-        if (hasAddress("factory")) {} else {}
-
         vm.startBroadcast(vm.envUint("PK"));
 
         // Deploy Airdrop implementation
