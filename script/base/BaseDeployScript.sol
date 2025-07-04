@@ -17,7 +17,7 @@ abstract contract BaseDeployScript is Script {
 
         uint256 forkId = vm.createFork(rpcUrl);
 
-        LogUtils.logInfo(string.concat("Selected RPC endpoint on chainid: ", vm.toString(forkId)));
+        LogUtils.logInfo(string.concat("Selected RPC endpoint: ", rpcUrl));
 
         vm.selectFork(forkId);
     }
