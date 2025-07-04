@@ -12,6 +12,16 @@ abstract contract BaseDeployScript is Script {
     string internal CONFIG_PATH = "./script/config/deploy-config.json";
     string internal ADDRESSES_PATH = "./script/config/deployed-addresses.json";
 
+    function setUp() public {
+        string memory rpcUrl = vm.envString("RPC_URL");
+
+        uint256 forkId = vm.createFork(rpcUrl);
+
+        LogUtils.logInfo(string.concat("Selected RPC endpoint on chainid: ", vm.toString(forkId)));
+
+        vm.selectFork(forkId);
+    }
+
     function loadConfig() internal view returns (string memory) {
         return vm.readFile(CONFIG_PATH);
     }
