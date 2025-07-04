@@ -9,20 +9,7 @@ contract DeployAirdropImplAndSetFactoryImpl is BaseDeployScript {
         // Check if factory address exists
         // If it already exists, overwrite it's airdrop implementation
 
-        if (hasAddress("factory")) {
-            LogUtils.logInfo(
-                "Factory has already been deployed. Checking if it already has an airdrop implementation..."
-            );
-            address tempFactoryAddress = getAddress("factory");
-
-            AirdropFactory previousFactory = AirdropFactory(tempFactoryAddress);
-
-            LogUtils.logInfo(
-                string.concat("Current implementation address: ", vm.toString(previousFactory.implementation()))
-            );
-        } else {
-            LogUtils.logInfo("Factory has not been deployed. Only deploying the airdropImpl.");
-        }
+        if (hasAddress("factory")) {} else {}
 
         vm.startBroadcast(vm.envUint("PK"));
 
@@ -31,10 +18,15 @@ contract DeployAirdropImplAndSetFactoryImpl is BaseDeployScript {
 
         implAddress = address(airdropImpl);
 
+        // Try to set factory's implementation
         if (hasAddress("factory")) {
+            LogUtils.logInfo("Factory has already been deployed.");
+
             AirdropFactory(getAddress("factory")).setImplementation(implAddress);
 
             LogUtils.logSuccess(string.concat("Set deployed factory's implementation to ", vm.toString(implAddress)));
+        } else {
+            LogUtils.logInfo("Factory has not been deployed. Only deploying the airdropImpl.");
         }
 
         vm.stopBroadcast();
