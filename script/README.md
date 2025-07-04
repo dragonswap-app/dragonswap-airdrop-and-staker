@@ -219,9 +219,7 @@ graph TB
     
     AirdropInstance1["💧 Airdrop Instance 1"]
     
-    AirdropInstance2["💧 Airdrop Instance 2"]
-    
-    Staker["🥩 Staker Contract<br/> This contract allows you to lock tokens for 30d,</br>and then get just the earnings and keep staking.</br> Or just withdraw all of it and stop staking. The user may stake without locking but fees are applied."]
+    Staker["🥩 Staker Contract<br/>Earn tokens by staking your own.</br>You may lock your assets inside the contract.</br>You may withdraw just the earnings or everything. Fees applied when not locking."]
     
     %% Tokens
     Token1["🪙 Token A"]
@@ -232,7 +230,7 @@ graph TB
     Owner --> Factory
     Factory --> Implementation
     Factory --> AirdropInstance1
-    Factory --> AirdropInstance2
+
     
     %% Airdrop Management
     Owner --> AirdropInstance1
@@ -242,17 +240,16 @@ graph TB
     %% Core Flow
     AirdropInstance1 --> Staker
     AirdropInstance1 --> User
+    AirdropInstance1 --> Implementation
     
     %% Staker Operations
     User --> Staker
     Staker --> Treasury
     Staker --> User
-    Staker --> AirdropInstance2
-    AirdropInstance2 --> Staker
+
     
     %% Token Relationships
     Token1 --> AirdropInstance1
-    Token2 --> AirdropInstance2
     RewardTokens --> Staker
     
     %% Styling
@@ -260,7 +257,7 @@ graph TB
     classDef userClass fill:#1c3eab,stroke:#fcfcfc,stroke-width:2px
     classDef tokenClass fill:#1c3eab,stroke:#1c3eab,stroke-width:2px
     
-    class Factory,Implementation,AirdropInstance1,AirdropInstance2,Staker contractClass
+    class Factory,Implementation,AirdropInstance1,Staker contractClass
     class Owner,User,Treasury,Signer userClass
     class Token1,Token2,RewardTokens tokenClass
 ```
