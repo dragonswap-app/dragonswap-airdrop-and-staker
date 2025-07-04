@@ -63,10 +63,10 @@ Using the following components
 > After each deploy, the `deployed-addresses.json` is populated with the newly acquired deployed addresses.
 ```json
 {
-"airdrop":"0x7fdB7a34D3fcb8d28942178A07F2E5c4A37720F9",
-"airdropImpl":"0x48dDe5adbCd8FF6cd79b9A633042Ea97794e486f",
-"factory":"0x283120f98dEa005F0cD443b3E301795F93f0f3f1",
-"staker":"0x65a9F7F52400645cA4611267cfbCCD9A6bDb950F"
+"airdrop":"0xairdropInstanceAddress",
+"airdropImpl":"0xairdropImplementationAddress",
+"factory":"0xfactoryAddress",
+"staker":"0xstakerAddress"
 }
 ```
 
