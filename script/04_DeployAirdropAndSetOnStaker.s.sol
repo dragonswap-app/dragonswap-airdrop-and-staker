@@ -6,14 +6,14 @@ import {Staker} from "../src/Staker.sol";
 import {BaseDeployScript} from "./base/BaseDeployScript.sol";
 import {console2} from "forge-std/console2.sol";
 
-contract DeployAirdropAndSetStakerAirdrop is BaseDeployScript {
-    error DeployAirdropAndSetStakerAirdrop__FactoryDoesNotExist();
+contract DeployAirdropAndSetOnStaker is BaseDeployScript {
+    error DeployAirdropAndSetOnStaker__FactoryDoesNotExist();
 
     function run() public returns (address airdropAddress) {
         string memory config = loadConfig();
 
         if (!hasAddress("factory")) {
-            revert DeployAirdropAndSetStakerAirdrop__FactoryDoesNotExist();
+            revert DeployAirdropAndSetOnStaker__FactoryDoesNotExist();
         }
 
         // Get factory address
