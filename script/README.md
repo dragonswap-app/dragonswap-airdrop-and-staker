@@ -86,7 +86,7 @@ Using the following components
 1) Populate the `deployment-config.json` with the required addresses.
 2) Populate the .env with the required environment variables.
 3) Modify `deployed-addresses.json` manually. (Optional)
-4) Run `forge script script/ChecksumScript.s.sol --rpc-url "YOUR_RPC_URL"` for verification. (Optional)
+4) Run `forge script script/ChecksumScript.s.sol` for verification. (Optional)
 
 > [!CAUTION]
 > Simulations may change the `deployed-addresses.json`
