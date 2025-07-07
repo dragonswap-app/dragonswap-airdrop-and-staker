@@ -213,13 +213,13 @@ graph TB
     Signer["🔐 Signer"]
     
     %% Core Contracts
-    Factory["📦 AirdropFactory<br/>Creates clones via minimal proxy<br/>Tracks all deployments<br/>Owner-controlled"]
+    Factory["📦 AirdropFactory"]
     
-    Implementation["🎯 Airdrop Implementation<br/>An optimization technique to save gas when deploying multiple airdrops."]
+    Implementation["🎯 Airdrop Implementation"]
     
     AirdropInstance1["💧 Airdrop Instance 1"]
     
-    Staker["🥩 Staker Contract<br/>Earn tokens by staking your own.</br>You may lock your assets inside the contract.</br>You may withdraw just the earnings or everything.</br> Fees applied when not locking."]
+    Staker["🥩 Staker Contract"]
     
     %% Tokens
     Token1["🪙 Token A"]
