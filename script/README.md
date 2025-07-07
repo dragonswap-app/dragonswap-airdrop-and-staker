@@ -225,6 +225,7 @@ graph TB
     Token1["🪙 Token A"]
     RewardTokens["🪙 Staking token"]
     
+    
     %% Factory Relationships
     Owner --> Factory
     Factory --> Implementation
@@ -235,6 +236,7 @@ graph TB
     Owner --> AirdropInstance1
     User --> AirdropInstance1
     Signer --> AirdropInstance1
+
     
     %% Core Flow
     AirdropInstance1 --> Staker
@@ -242,6 +244,7 @@ graph TB
     AirdropInstance1 --> Implementation
     
     %% Staker Operations
+    Owner --> Staker
     User --> Staker
     Staker --> Treasury
     Staker --> User
