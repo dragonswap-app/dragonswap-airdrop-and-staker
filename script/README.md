@@ -33,22 +33,22 @@ Using the following components
 ```json
 {
   "airdrop": {
-    "owner": "0airdropowner",
-    "treasury": "0xtreasury",
-    "signer": "0xsigner",
-    "token": "0xtoken",
+    "owner": "0xAirdropOwner",
+    "treasury": "0xTreasury",
+    "signer": "0xSigner",
+    "token": "0xToken",
     "unlockTimestamps": []
   },
   "factory": {
-    "owner": "0xfactory"
+    "owner": "0xFactory"
   },
   "staker": {
-    "owner": "0xowner",
-    "stakingToken": "0xstakingtoken",
-    "minimumDeposit": 300,
-    "treasury": "0xtreasury",
-    "fee": 1000,
-    "rewardTokens": ["0xtoken"]
+    "owner": "0xOwner",
+    "stakingToken": "0xStakingToken",
+    "minimumDeposit": 0,
+    "treasury": "0xTreasury",
+    "fee": 0,
+    "rewardTokens": []
   }
 }
 ```
@@ -60,13 +60,13 @@ Using the following components
 > 
 > From now-on we will be calling it `deployed-addresses.json`
 > 
-> After each deploy, the `deployed-addresses.json` is populated with the newly acquired deployed addresses.
+> After each run, the `deployed-addresses.json` is populated with the newly acquired deployed addresses.
 ```json
 {
-"airdrop":"0xairdropInstanceAddress",
-"airdropImpl":"0xairdropImplementationAddress",
-"factory":"0xfactoryAddress",
-"staker":"0xstakerAddress"
+  "airdrop":      "0xAirdropInstanceAddress",
+  "airdropImpl":  "0xAirdropImplementationAddress",
+  "factory":      "0xFactoryAddress",
+  "staker":       "0xStakerAddress"
 }
 ```
 
@@ -111,10 +111,10 @@ Using the following components
 
 Running the following script will attempt deployment on specified RPC provider.
 ```bash
-forge script script/01_DeployStaker.s.sol  --rpc-url "YOUR_RPC_URL" --broadcast
+forge script script/01_DeployStaker.s.sol --broadcast
 ```
 
-See [general deployment](#deployment-steps-general) section for next steps
+See [general deployment](#deployment-steps-general) section for next steps.
 
 
 ***
@@ -138,10 +138,10 @@ See [general deployment](#deployment-steps-general) section for next steps
 
 Running the following script will attempt deployment on specified RPC provider.
 ```bash
-forge script script/02_DeployAirdropImpl.s.sol  --rpc-url "YOUR_RPC_URL" --broadcast
+forge script script/02_DeployAirdropImpl.s.sol --broadcast
 ```
 
-See [general deployment](#deployment-steps-general) section for next steps
+See [general deployment](#deployment-steps-general) section for next steps.
 ***
 
 ## 3. Deploying the Airdrop Factory
@@ -162,10 +162,10 @@ See [general deployment](#deployment-steps-general) section for next steps
 
 Running the following script will attempt deployment on specified RPC provider.
 ```bash
-forge script script/03_DeployAirdropFactory.s.sol  --rpc-url "YOUR_RPC_URL" --broadcast
+forge script script/03_DeployAirdropFactory.s.sol --broadcast
 ```
 
-See [general deployment](#deployment-steps-general) section for next steps
+See [general deployment](#deployment-steps-general) section for next steps.
 
 ***
 
@@ -198,7 +198,7 @@ Running the following script will attempt deployment on specified RPC provider.
 forge script script/04_DeployAirdrop.s.sol  --rpc-url "YOUR_RPC_URL" --broadcast
 ```
 
-See [general deployment](#deployment-steps-general) section for next steps
+See [general deployment](#deployment-steps-general) section for next steps.
 
 ***
 
@@ -219,11 +219,10 @@ graph TB
     
     AirdropInstance1["💧 Airdrop Instance 1"]
     
-    Staker["🥩 Staker Contract<br/>Earn tokens by staking your own.</br>You may lock your assets inside the contract.</br>You may withdraw just the earnings or everything. Fees applied when not locking."]
+    Staker["🥩 Staker Contract<br/>Earn tokens by staking your own.</br>You may lock your assets inside the contract.</br>You may withdraw just the earnings or everything.</br> Fees applied when not locking."]
     
     %% Tokens
     Token1["🪙 Token A"]
-    Token2["🪙 Token B"]
     RewardTokens["🪙 Staking token"]
     
     %% Factory Relationships
