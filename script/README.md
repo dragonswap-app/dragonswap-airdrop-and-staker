@@ -195,7 +195,7 @@ For `deployed-addresses.json`
 
 Running the following script will attempt deployment on specified RPC provider.
 ```bash
-forge script script/04_DeployAirdrop.s.sol  --rpc-url "YOUR_RPC_URL" --broadcast
+forge script script/04_DeployAirdrop.s.sol --broadcast
 ```
 
 See [general deployment](#deployment-steps-general) section for next steps.
