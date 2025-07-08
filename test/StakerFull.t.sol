@@ -13,12 +13,10 @@ contract StakerFullTest is Test {
     address public alice = address(0xA11CE);
     address public bob = address(0xB0B);
     address public charlie = address(0xCACCE);
-    address public dave = address(0xDA7E);
 
     uint256 public constant ALICE_STAKE = 10_000 * 10 ** 18;
     uint256 public constant BOB_STAKE = 20_000 * 10 ** 18;
     uint256 public constant CHARLIE_STAKE = 30_000 * 10 ** 18;
-    uint256 public constant DAVE_STAKE = 40_000 * 10 ** 18;
     uint256 public constant MINIMUM_DEPOSIT = 1 wei;
 
     uint256 constant PRECISION = 1_00_00;
@@ -61,7 +59,6 @@ contract StakerFullTest is Test {
         stakingToken.mint(alice, ALICE_STAKE * 10);
         stakingToken.mint(bob, BOB_STAKE * 10);
         stakingToken.mint(charlie, CHARLIE_STAKE * 10);
-        stakingToken.mint(dave, DAVE_STAKE * 10);
 
         LogUtils.logInfo("Setting up approvals");
         vm.prank(alice);
@@ -69,8 +66,6 @@ contract StakerFullTest is Test {
         vm.prank(bob);
         stakingToken.approve(address(staker), type(uint256).max);
         vm.prank(charlie);
-        stakingToken.approve(address(staker), type(uint256).max);
-        vm.prank(dave);
         stakingToken.approve(address(staker), type(uint256).max);
     }
 
@@ -1316,11 +1311,11 @@ contract StakerFullTest is Test {
         LogUtils.logInfo(string.concat("Creating ", vm.toString(largeStakeCount), " stakes to test gas consumption"));
 
         for (uint256 i = 0; i < largeStakeCount; i++) {
-            // Charlie stakes
+            // Alice
             vm.prank(alice);
             staker.stake(alice, stakeAmount, false);
 
-            // dave stakes
+            // Bob
             vm.prank(bob);
             staker.stake(bob, stakeAmount, false);
 
