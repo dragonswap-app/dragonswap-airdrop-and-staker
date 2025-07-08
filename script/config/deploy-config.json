@@ -1,0 +1,19 @@
+{
+  "airdrop": {
+    "owner": "",
+    "treasury": "",
+    "signer": "",
+    "token": "",
+    "unlockTimestamps": []
+  },
+  "factory": {
+    "owner": ""
+  },
+  "staker": {
+    "owner": "",
+    "stakingToken": "",
+    "treasury": "",
+    "fee": 0,
+    "rewardTokens": []
+  }
+}
