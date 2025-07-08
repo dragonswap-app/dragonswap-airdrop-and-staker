@@ -11,6 +11,7 @@
     "owner": ""
   },
   "staker": {
+    "minimumDeposit": 0,
     "owner": "",
     "stakingToken": "",
     "treasury": "",
