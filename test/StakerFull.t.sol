@@ -17,11 +17,12 @@ contract StakerFullTest is Test {
     uint256 public constant ALICE_STAKE = 10_000 * 10 ** 18;
     uint256 public constant BOB_STAKE = 20_000 * 10 ** 18;
     uint256 public constant CHARLIE_STAKE = 30_000 * 10 ** 18;
-    uint256 public constant MIN_DEPOSIT = 100 * 10 ** 18;
+    uint256 public constant MINIMUM_DEPOSIT = 1 wei;
 
     uint256 constant PRECISION = 1_00_00;
     uint256 constant DEFAULT_FEE = 25_00; // 25% fee
     uint256 constant LOCK_TIMESPAN = 30 days;
+    uint256 CENTURY22TIMESTAMP = 4102528271;
 
     Staker public staker;
     ERC20Mock public stakingToken;
@@ -52,7 +53,7 @@ contract StakerFullTest is Test {
         LogUtils.logInfo(string.concat("reward token 1:\t", vm.toString(address(rewardToken1))));
 
         vm.prank(owner);
-        staker = new Staker(owner, address(stakingToken), treasury, DEFAULT_FEE, rewardTokens);
+        staker = new Staker(owner, address(stakingToken), treasury, MINIMUM_DEPOSIT, DEFAULT_FEE, rewardTokens);
 
         LogUtils.logInfo("Minting tokens to test users");
         stakingToken.mint(alice, ALICE_STAKE * 10);
@@ -169,7 +170,8 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.Deposit(alice, alice, ALICE_STAKE, false);
+
+        emit Staker.Deposit(alice, alice, ALICE_STAKE, false, 0);
         staker.stake(alice, ALICE_STAKE, false);
 
         assertEq(stakingToken.balanceOf(alice), initialBalance - ALICE_STAKE);
@@ -178,7 +180,7 @@ contract StakerFullTest is Test {
         assertEq(staker.userStakeCount(alice), 1);
 
         // Check stake details
-        (uint256 amount, uint256 unlockTimestamp,) = staker.getAccountStakeData(alice, 0);
+        (uint256 amount, uint256 unlockTimestamp,,) = staker.getAccountStakeData(alice, 0);
         assertEq(amount, ALICE_STAKE);
         assertEq(unlockTimestamp, 0); // Not locked
     }
@@ -190,11 +192,11 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.Deposit(alice, alice, ALICE_STAKE, true);
+        emit Staker.Deposit(alice, alice, ALICE_STAKE, true, 0);
         staker.stake(alice, ALICE_STAKE, true);
 
         // Check stake details
-        (uint256 amount, uint256 unlockTimestamp,) = staker.getAccountStakeData(alice, 0);
+        (uint256 amount, uint256 unlockTimestamp,,) = staker.getAccountStakeData(alice, 0);
         assertEq(amount, ALICE_STAKE);
         assertEq(unlockTimestamp, block.timestamp + LOCK_TIMESPAN);
     }
@@ -206,11 +208,11 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.Deposit(alice, bob, ALICE_STAKE, false);
+        emit Staker.Deposit(alice, bob, ALICE_STAKE, false, 0);
         staker.stake(bob, ALICE_STAKE, false);
 
         assertEq(staker.userStakeCount(bob), 1);
-        (uint256 amount,,) = staker.getAccountStakeData(bob, 0);
+        (uint256 amount,,,) = staker.getAccountStakeData(bob, 0);
         assertEq(amount, ALICE_STAKE);
     }
 
@@ -231,7 +233,7 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(Staker.InvalidValue.selector);
-        staker.stake(alice, MIN_DEPOSIT - 1, false);
+        staker.stake(alice, MINIMUM_DEPOSIT - 1, false);
     }
 
     /* TEST: test_LockStake_Success - - - - - - - - - - - - - - - - - - - - - - /
@@ -250,7 +252,7 @@ contract StakerFullTest is Test {
         staker.lockStake(0);
 
         // Verify it's locked
-        (, uint256 unlockTimestamp,) = staker.getAccountStakeData(alice, 0);
+        (, uint256 unlockTimestamp,,) = staker.getAccountStakeData(alice, 0);
         assertEq(unlockTimestamp, block.timestamp + LOCK_TIMESPAN);
     }
 
@@ -384,8 +386,8 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.Payout(alice, rewardToken1, rewardAmount);
-        staker.claimEarnings(stakeIndexes);
+        emit Staker.Payout(alice, rewardToken1, rewardAmount, 0);
+        staker.claimEarnings(stakeIndexes, address(0x0));
 
         assertEq(rewardToken1.balanceOf(alice), aliceBalanceBefore + rewardAmount);
     }
@@ -411,7 +413,7 @@ contract StakerFullTest is Test {
         stakeIndexes[1] = 1;
 
         vm.prank(alice);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
 
         // Each stake should get half the rewards
         assertEq(rewardToken1.balanceOf(alice), rewardAmount);
@@ -427,7 +429,7 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(Staker.InvalidStakeIndex.selector);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
     }
 
     /* TEST: test_ClaimEarnings_RemovedRewardToken - - - - - - - - - - - - - - -/
@@ -463,7 +465,7 @@ contract StakerFullTest is Test {
         uint256 aliceBalance2Before = rewardToken2.balanceOf(alice);
 
         vm.prank(alice);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
 
         // Should only receive rewardToken1
         assertEq(rewardToken1.balanceOf(alice), aliceBalance1Before + 1000 * 10 ** 18);
@@ -498,10 +500,10 @@ contract StakerFullTest is Test {
         vm.prank(alice);
         // The contract emits Payout first, then Withdraw
         vm.expectEmit();
-        emit Staker.Payout(alice, rewardToken1, rewardAmount);
+        emit Staker.Payout(alice, rewardToken1, rewardAmount, 0);
         vm.expectEmit();
-        emit Staker.Withdraw(alice, 0, expectedFee);
-        staker.withdraw(stakeIndexes);
+        emit Staker.Withdraw(alice, 0, address(alice), expectedFee);
+        staker.withdraw(stakeIndexes, address(alice));
 
         // Check balances
         assertEq(stakingToken.balanceOf(alice), aliceBalanceBefore + expectedReturn);
@@ -510,7 +512,7 @@ contract StakerFullTest is Test {
         assertEq(staker.totalDeposits(), 0);
 
         // Check stake is claimed
-        (,, uint256[] memory rewardDebts) = staker.getAccountStakeData(alice, 0);
+        (,,, uint256[] memory rewardDebts) = staker.getAccountStakeData(alice, 0);
         assertTrue(rewardDebts.length > 0); // Stake still exists but is claimed
     }
 
@@ -532,7 +534,7 @@ contract StakerFullTest is Test {
         uint256 aliceBalanceBefore = stakingToken.balanceOf(alice);
 
         vm.prank(alice);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
 
         // No fee for locked stakes
         assertEq(stakingToken.balanceOf(alice), aliceBalanceBefore + ALICE_STAKE);
@@ -551,12 +553,12 @@ contract StakerFullTest is Test {
         stakeIndexes[0] = 0;
 
         vm.prank(alice);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
 
         // Try to withdraw again
         vm.prank(alice);
         vm.expectRevert(Staker.AlreadyClaimed.selector);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
     }
 
     /* TEST: test_Withdraw_RevertWhenStillLocked - - - - - - - - - - - - - - - -/
@@ -572,35 +574,51 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(Staker.StakeIsLocked.selector);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
     }
 
     /* TEST: test_EmergencyWithdraw_Success - - - - - - - - - - - - - - - - - - /
      * Tests emergency withdrawal without rewards - - - - - - - - - - - - - - -*/
     function test_EmergencyWithdraw_Success() public {
+        uint256 LOCAL_SMALL_ALICE_STAKE = 1000;
         LogUtils.logDebug("Testing emergencyWithdraw functionality");
 
+        LogUtils.logDebug(
+            string.concat("Starting alice balance of token: ", vm.toString(stakingToken.balanceOf(alice)))
+        );
         // Alice stakes without locking
         vm.prank(alice);
-        staker.stake(alice, ALICE_STAKE, false);
+        staker.stake(alice, LOCAL_SMALL_ALICE_STAKE, false);
+
+        LogUtils.logDebug(string.concat("ALICE IS STAKING: ", vm.toString(LOCAL_SMALL_ALICE_STAKE)));
 
         // Send rewards but don't claim them
-        rewardToken1.mint(address(staker), 1000 * 10 ** 18);
+        rewardToken1.mint(address(staker), 10000000 * 10 ** 18);
 
         uint256[] memory stakeIndexes = new uint256[](1);
         stakeIndexes[0] = 0;
 
-        uint256 expectedFee = (ALICE_STAKE * DEFAULT_FEE) / PRECISION;
-        uint256 expectedReturn = ALICE_STAKE - expectedFee;
+        uint256 expectedFee = (LOCAL_SMALL_ALICE_STAKE * DEFAULT_FEE) / PRECISION;
+
+        LogUtils.logDebug(string.concat("Expecting the fee of 25%: ", vm.toString(expectedFee)));
+        uint256 expectedReturn = LOCAL_SMALL_ALICE_STAKE - expectedFee;
 
         uint256 aliceBalanceBefore = stakingToken.balanceOf(alice);
         uint256 aliceRewardBalanceBefore = rewardToken1.balanceOf(alice);
 
+        LogUtils.logDebug(
+            string.concat("Staker balance before: ", vm.toString(stakingToken.balanceOf(address(staker))))
+        );
+        LogUtils.logDebug(string.concat("Alice balance before: ", vm.toString(stakingToken.balanceOf(address(alice)))));
+
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.EmergencyWithdraw(alice, 0, expectedFee);
-        staker.emergencyWithdraw(stakeIndexes);
+        emit Staker.EmergencyWithdraw(alice, 0, address(alice), expectedFee);
 
+        staker.emergencyWithdraw(stakeIndexes, address(alice));
+        LogUtils.logDebug(string.concat("Staker balance after: ", vm.toString(stakingToken.balanceOf(address(staker)))));
+
+        LogUtils.logDebug(string.concat("Alice balance after: ", vm.toString(stakingToken.balanceOf(address(alice)))));
         // Check only principal was withdrawn, no rewards
         assertEq(stakingToken.balanceOf(alice), aliceBalanceBefore + expectedReturn);
         assertEq(rewardToken1.balanceOf(alice), aliceRewardBalanceBefore); // No rewards claimed
@@ -618,11 +636,11 @@ contract StakerFullTest is Test {
         stakeIndexes[0] = 0;
 
         vm.prank(alice);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
 
         vm.prank(alice);
         vm.expectRevert(Staker.AlreadyClaimed.selector);
-        staker.emergencyWithdraw(stakeIndexes);
+        staker.emergencyWithdraw(stakeIndexes, address(0x0));
     }
 
     /* TEST: test_Sweep_Success - - - - - - - - - - - - - - - - - - - - - - - - /
@@ -824,20 +842,20 @@ contract StakerFullTest is Test {
         uint256[] memory aliceIndexes = new uint256[](1);
         aliceIndexes[0] = 0;
         vm.prank(alice);
-        staker.claimEarnings(aliceIndexes);
+        staker.claimEarnings(aliceIndexes, address(0x0));
 
         // Bob withdraws (with fee)
         uint256[] memory bobIndexes = new uint256[](1);
         bobIndexes[0] = 0;
         vm.prank(bob);
-        staker.withdraw(bobIndexes);
+        staker.withdraw(bobIndexes, address(0x0));
 
         // Warp time for Alice's lock to expire
         vm.warp(block.timestamp + LOCK_TIMESPAN + 1);
 
         // Alice withdraws (no fee)
         vm.prank(alice);
-        staker.withdraw(aliceIndexes);
+        staker.withdraw(aliceIndexes, address(0x0));
 
         // Verify final state
         assertGt(rewardToken1.balanceOf(alice), 0);
@@ -882,17 +900,17 @@ contract StakerFullTest is Test {
 
         uint256 aliceBalanceBefore = rewardToken1.balanceOf(alice);
         vm.prank(alice);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
         assertEq(rewardToken1.balanceOf(alice), aliceBalanceBefore + expectedAliceReward);
 
         uint256 bobBalanceBefore = rewardToken1.balanceOf(bob);
         vm.prank(bob);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
         assertEq(rewardToken1.balanceOf(bob), bobBalanceBefore + expectedBobReward);
 
         uint256 charlieBalanceBefore = rewardToken1.balanceOf(charlie);
         vm.prank(charlie);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
         assertEq(rewardToken1.balanceOf(charlie), charlieBalanceBefore + expectedCharlieReward);
 
         // Verify all rewards distributed (accounting for rounding)
@@ -909,21 +927,21 @@ contract StakerFullTest is Test {
 
         // Test stakingToken zero address
         vm.expectRevert(Staker.InvalidAddress.selector);
-        new Staker(owner, address(0), treasury, DEFAULT_FEE, emptyRewardTokens);
+        new Staker(owner, address(0), treasury, MINIMUM_DEPOSIT, DEFAULT_FEE, emptyRewardTokens);
 
         // Test treasury zero address
         vm.expectRevert(Staker.InvalidAddress.selector);
-        new Staker(owner, address(stakingToken), address(0), DEFAULT_FEE, emptyRewardTokens);
+        new Staker(owner, address(stakingToken), address(0), MINIMUM_DEPOSIT, DEFAULT_FEE, emptyRewardTokens);
 
         // Test fee too high
         vm.expectRevert();
-        new Staker(owner, address(stakingToken), treasury, 91_00, emptyRewardTokens);
+        new Staker(owner, address(stakingToken), treasury, MINIMUM_DEPOSIT, 91_00, emptyRewardTokens);
 
         // Test reward token zero address
         address[] memory invalidRewardTokens = new address[](1);
         invalidRewardTokens[0] = address(0);
         vm.expectRevert(Staker.InvalidAddress.selector);
-        new Staker(owner, address(stakingToken), treasury, DEFAULT_FEE, invalidRewardTokens);
+        new Staker(owner, address(stakingToken), treasury, MINIMUM_DEPOSIT, DEFAULT_FEE, invalidRewardTokens);
     }
 
     /* TEST: test_ComputeDebtAccessHash - - - - - - - - - - - - - - - - - - - - /
@@ -995,7 +1013,7 @@ contract StakerFullTest is Test {
         rewardToken1.mint(address(staker), 1000 * 10 ** 18);
 
         // Get stake data before claim
-        (uint256 amount, uint256 unlockTimestamp, uint256[] memory rewardDebts) = staker.getAccountStakeData(alice, 0);
+        (uint256 amount, uint256 unlockTimestamp,, uint256[] memory rewardDebts) = staker.getAccountStakeData(alice, 0);
         assertEq(amount, ALICE_STAKE);
         assertGt(unlockTimestamp, 0);
 
@@ -1010,10 +1028,10 @@ contract StakerFullTest is Test {
         uint256[] memory stakeIndexes = new uint256[](1);
         stakeIndexes[0] = 0;
         vm.prank(alice);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
 
         // Get stake data after claim
-        (,, uint256[] memory newRewardDebts) = staker.getAccountStakeData(alice, 0);
+        (,,, uint256[] memory newRewardDebts) = staker.getAccountStakeData(alice, 0);
 
         // Debt should have increased after claiming
         assertGt(newRewardDebts[1], rewardDebts[1]); // rewardToken1 debt increased
@@ -1066,9 +1084,9 @@ contract StakerFullTest is Test {
         vm.warp(block.timestamp + LOCK_TIMESPAN + 1);
 
         vm.prank(alice);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
 
-        (uint256 amount, uint256 unlockTimestamp,) = staker.getAccountStakeData(alice, 1);
+        (uint256 amount, uint256 unlockTimestamp,,) = staker.getAccountStakeData(alice, 1);
         assertEq(amount, ALICE_STAKE);
         assertGt(unlockTimestamp, 0);
     }
@@ -1095,14 +1113,14 @@ contract StakerFullTest is Test {
         uint256[] memory stakeIndexes = new uint256[](1);
         stakeIndexes[0] = 0;
         vm.prank(charlie);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
 
         // Add rewards
         rewardToken1.mint(address(staker), 1_000 * 10 ** 18);
 
         vm.prank(charlie);
         vm.expectRevert(Staker.AlreadyClaimed.selector);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
     }
 
     /* TEST: test_WithdrawnStake_ShouldNotAccumulateRewards - - - - - - - - - - /
@@ -1117,7 +1135,7 @@ contract StakerFullTest is Test {
         uint256[] memory stakeIndexes = new uint256[](1);
         stakeIndexes[0] = 0;
         vm.prank(charlie);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
 
         // Add rewards after withdrawal
         rewardToken1.mint(address(staker), 1_000 * 10 ** 18);
@@ -1147,14 +1165,14 @@ contract StakerFullTest is Test {
         uint256[] memory stakeIndexes = new uint256[](1);
         stakeIndexes[0] = 0;
         vm.prank(charlie);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
 
         uint256 charlieBalance = rewardToken1.balanceOf(charlie);
 
         // Charlie tries to claim again - should get 0 more rewards
         vm.prank(charlie);
         vm.expectRevert(Staker.AlreadyClaimed.selector);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
 
         assertEq(rewardToken1.balanceOf(charlie), charlieBalance, "Should not claim additional rewards");
     }
@@ -1174,7 +1192,7 @@ contract StakerFullTest is Test {
         uint256[] memory stakeIndexes = new uint256[](1);
         stakeIndexes[0] = 0;
         vm.prank(charlie);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
 
         // Add rewards - should only go to Alice now
         uint256 rewardAmount = 1_000 * 10 ** 18;
@@ -1182,7 +1200,7 @@ contract StakerFullTest is Test {
 
         // Alice claims
         vm.prank(alice);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
 
         // Alice should get ALL rewards since Charlie withdrew
         assertEq(rewardToken1.balanceOf(alice), rewardAmount, "Alice should get all rewards");
@@ -1190,7 +1208,7 @@ contract StakerFullTest is Test {
         // Charlie should get 0 new rewards
         vm.prank(charlie);
         vm.expectRevert(Staker.AlreadyClaimed.selector);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
         assertEq(rewardToken1.balanceOf(charlie), 0, "Charlie should get no new rewards after withdrawal");
     }
 
@@ -1209,7 +1227,7 @@ contract StakerFullTest is Test {
         staker.stake(charlie, ALICE_STAKE, false);
         staker.stake(charlie, ALICE_STAKE, false);
         staker.stake(charlie, ALICE_STAKE, false);
-        staker.withdraw(stakeIndexes);
+        staker.withdraw(stakeIndexes, address(0x0));
         vm.stopPrank();
 
         // Add rewards after withdrawal
@@ -1218,6 +1236,123 @@ contract StakerFullTest is Test {
         // Should revert when claiming on withdrawn stakes
         vm.prank(charlie);
         vm.expectRevert(Staker.AlreadyClaimed.selector);
-        staker.claimEarnings(stakeIndexes);
+        staker.claimEarnings(stakeIndexes, address(0x0));
+    }
+
+    /* TEST: test_ClaimEarnings_GasIncrease_WithLessStakes - - - - - - - - - - -/
+     * Tests gas consumption increase in claimEarnings with 10 stakes - - - - -*/
+    function test_ClaimEarnings_GasIncrease_B_WithLessStakes() public {
+        uint256 smallStakeCount = 10;
+        uint256 smallStakeClaimDeltaGas;
+        uint256 stakeAmount = 100 * 10 ** 18;
+        uint256 rewardPerRound = 1000 * 10 ** 18;
+
+        // Mint additional tokens for gas test
+        stakingToken.mint(alice, ALICE_STAKE * 5000);
+        stakingToken.mint(bob, BOB_STAKE * 5000);
+
+        for (uint256 i = 0; i < smallStakeCount; i++) {
+            // Alice stakes
+            vm.prank(alice);
+            staker.stake(alice, stakeAmount, false);
+
+            // Bob stakes
+            vm.prank(bob);
+            staker.stake(bob, stakeAmount, false);
+
+            // Distribute rewards
+            rewardToken1.mint(address(staker), rewardPerRound);
+
+            // Measure gas on final iteration
+            if (i == smallStakeCount - 1) {
+                uint256[] memory stakeIndexes = new uint256[](1);
+                stakeIndexes[0] = 0; // Claim only first stake
+
+                uint256 gasBefore = gasleft();
+                vm.prank(alice);
+                staker.claimEarnings(stakeIndexes, address(0x0));
+                uint256 gasUsed = gasBefore - gasleft();
+                smallStakeClaimDeltaGas = gasUsed;
+
+                LogUtils.logInfo(
+                    string.concat(
+                        "Gas used for claimEarnings with ",
+                        vm.toString(smallStakeCount),
+                        " total stakes: ",
+                        vm.toString(gasUsed)
+                    )
+                );
+
+                // Assert reasonable gas consumption
+                // This test may fail if there's a gas DoS vulnerability
+                assertLt(gasUsed, 1_000_000, "Gas leak - potential DoS vulnerability");
+            }
+        }
+
+        // Check with arbitrary value
+        assertLt(smallStakeClaimDeltaGas, 58495);
+    }
+
+    /* TEST: test_ClaimEarnings_GasIncrease_WithManyStakes - - - - - - - - - - -/
+     * Tests gas consumption increase in claimEarnings with 7000 stakes - - - -*/
+    function test_ClaimEarnings_GasIncrease_A_WithManyStakes() public {
+        LogUtils.logDebug("Testing gas increase in claimEarnings with many stakes");
+
+        // Mint additional tokens for gas test
+        stakingToken.mint(alice, ALICE_STAKE * 5000);
+        stakingToken.mint(bob, BOB_STAKE * 5000);
+
+        uint256 largeStakeCount = 7000;
+
+        uint256 largeStakeClaimDeltaGas;
+
+        uint256 stakeAmount = 100 * 10 ** 18;
+        uint256 rewardPerRound = 1000 * 10 ** 18;
+
+        LogUtils.logInfo(string.concat("Creating ", vm.toString(largeStakeCount), " stakes to test gas consumption"));
+
+        for (uint256 i = 0; i < largeStakeCount; i++) {
+            // Alice
+            vm.prank(alice);
+            staker.stake(alice, stakeAmount, false);
+
+            // Bob
+            vm.prank(bob);
+            staker.stake(bob, stakeAmount, false);
+
+            // Distribute rewards
+            rewardToken1.mint(address(staker), rewardPerRound);
+
+            // Measure gas on final iteration
+            if (i == largeStakeCount - 1) {
+                uint256[] memory stakeIndexes = new uint256[](1);
+                stakeIndexes[0] = 0; // Claim only first stake
+
+                uint256 gasBefore = gasleft();
+                vm.prank(alice);
+                staker.claimEarnings(stakeIndexes, address(0x0));
+                uint256 gasUsed = gasBefore - gasleft();
+
+                largeStakeClaimDeltaGas = gasUsed;
+
+                LogUtils.logInfo(
+                    string.concat(
+                        "Gas used for claimEarnings with ",
+                        vm.toString(largeStakeCount),
+                        " total stakes: ",
+                        vm.toString(gasUsed)
+                    )
+                );
+
+                // Assert reasonable gas consumption
+                // This test may fail if there's a gas DoS vulnerability
+                assertLt(gasUsed, 1_000_000, "Gas leak - potential DoS vulnerability");
+            }
+        }
+
+        // Check with arbitrary value
+        assertLt(largeStakeClaimDeltaGas, 58495);
+
+        LogUtils.logInfo("Gas consumption test completed");
     }
 }
