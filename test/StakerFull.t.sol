@@ -34,8 +34,6 @@ contract StakerFullTest is Test {
     address public owner = makeAddr("owner");
     address public treasury = makeAddr("treasury");
 
-    uint256 constant ALLOWED_GAS_DIFFERENCE = 1;
-
     /* TEST: setUp - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -/
      * Pretend to be the owner address, create mock tokens and a staker, - - - -/
      * set up reward tokens and initialize the staker contract - - - - - - - - */
