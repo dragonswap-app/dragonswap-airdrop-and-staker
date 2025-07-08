@@ -4,7 +4,8 @@
     "treasury": "",
     "signer": "",
     "token": "",
-    "unlockTimestamps": []
+    "unlockTimestamps": [],
+    "defaultDepositValue" : 0
   },
   "factory": {
     "owner": ""

@@ -37,7 +37,8 @@ Using the following components
     "treasury": "0xTreasury",
     "signer": "0xSigner",
     "token": "0xToken",
-    "unlockTimestamps": []
+    "unlockTimestamps": [],
+    "defaultDepositValue": 0
   },
   "factory": {
     "owner": "0xFactory"
@@ -63,10 +64,10 @@ Using the following components
 > After each run, the `deployed-addresses.json` is populated with the newly acquired deployed addresses.
 ```json
 {
-  "airdrop":      "0xAirdropInstanceAddress",
-  "airdropImpl":  "0xAirdropImplementationAddress",
-  "factory":      "0xFactoryAddress",
-  "staker":       "0xStakerAddress"
+  "airdrop": "0xAirdropInstanceAddress",
+  "airdropImpl": "0xAirdropImplementationAddress",
+  "factory": "0xFactoryAddress",
+  "staker": "0xStakerAddress"
 }
 ```
 
@@ -201,6 +202,30 @@ forge script script/04_DeployAirdrop.s.sol --broadcast
 See [general deployment](#deployment-steps-general) section for next steps.
 
 ***
+
+
+## 5. Depositing tokens to airdrop instance
+### Prerequisites
+
+For `deploy-config.json`
+|input|description|
+|---|---|
+|defaultDepositValue|uint256 value to argument deposit() (as-is)|
+
+
+For `deployed-addresses.json`
+|input|description|
+|---|---|
+|airdrop|The address of the airdrop|
+
+
+Running the following script will attempt to deposit funds on an airdrop.
+```bash
+forge script script/05_DepositTokenToAirdrop.s.sol --broadcast
+```
+***
+
+
 
 # Smart Contract System Architecture
 ## System Overview Diagram
