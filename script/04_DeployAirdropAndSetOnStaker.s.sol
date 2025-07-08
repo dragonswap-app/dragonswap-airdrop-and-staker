@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {AirdropFactory} from "../src/AirdropFactory.sol";
 import {Staker} from "../src/Staker.sol";
-import {BaseDeployScript} from "./base/BaseDeployScript.sol";
+import {BaseDeployScript} from "./base/BaseDeployScript.s.sol";
 import {console2} from "forge-std/console2.sol";
 
 contract DeployAirdropAndSetOnStaker is BaseDeployScript {
