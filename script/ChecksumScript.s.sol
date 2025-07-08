@@ -371,7 +371,7 @@ contract ChecksumScript is BaseDeployScript {
 
     function summarizeChecks(CheckResult[] memory checks, uint256 count)
         internal
-        pure 
+        pure
         returns (uint256 passed, uint256 total)
     {
         total = count;
