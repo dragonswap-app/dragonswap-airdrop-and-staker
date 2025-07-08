@@ -170,7 +170,8 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.Deposit(alice, alice, ALICE_STAKE, false);
+
+        emit Staker.Deposit(alice, alice, ALICE_STAKE, false, 0);
         staker.stake(alice, ALICE_STAKE, false);
 
         assertEq(stakingToken.balanceOf(alice), initialBalance - ALICE_STAKE);
@@ -191,7 +192,7 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.Deposit(alice, alice, ALICE_STAKE, true);
+        emit Staker.Deposit(alice, alice, ALICE_STAKE, true, 0);
         staker.stake(alice, ALICE_STAKE, true);
 
         // Check stake details
@@ -207,7 +208,7 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.Deposit(alice, bob, ALICE_STAKE, false);
+        emit Staker.Deposit(alice, bob, ALICE_STAKE, false, 0);
         staker.stake(bob, ALICE_STAKE, false);
 
         assertEq(staker.userStakeCount(bob), 1);
@@ -385,7 +386,7 @@ contract StakerFullTest is Test {
 
         vm.prank(alice);
         vm.expectEmit();
-        emit Staker.Payout(alice, rewardToken1, rewardAmount);
+        emit Staker.Payout(alice, rewardToken1, rewardAmount, 0);
         staker.claimEarnings(stakeIndexes, address(0x0));
 
         assertEq(rewardToken1.balanceOf(alice), aliceBalanceBefore + rewardAmount);
@@ -499,7 +500,7 @@ contract StakerFullTest is Test {
         vm.prank(alice);
         // The contract emits Payout first, then Withdraw
         vm.expectEmit();
-        emit Staker.Payout(alice, rewardToken1, rewardAmount);
+        emit Staker.Payout(alice, rewardToken1, rewardAmount, 0);
         vm.expectEmit();
         emit Staker.Withdraw(alice, 0, address(alice), expectedFee);
         staker.withdraw(stakeIndexes, address(alice));
@@ -1289,7 +1290,7 @@ contract StakerFullTest is Test {
         }
 
         // Check with arbitrary value
-        assertLt(smallStakeClaimDeltaGas, 58199);
+        assertLt(smallStakeClaimDeltaGas, 58495);
     }
 
     /* TEST: test_ClaimEarnings_GasIncrease_WithManyStakes - - - - - - - - - - -/
@@ -1350,7 +1351,7 @@ contract StakerFullTest is Test {
         }
 
         // Check with arbitrary value
-        assertLt(largeStakeClaimDeltaGas, 58199);
+        assertLt(largeStakeClaimDeltaGas, 58495);
 
         LogUtils.logInfo("Gas consumption test completed");
     }
