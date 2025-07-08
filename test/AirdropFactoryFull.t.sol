@@ -506,7 +506,7 @@ contract AirdropFactoryFullTest is Test {
 
     /* TEST: test_Debug_ParameterValidation - - - - - - - - - - - - - - - - - - - -/
     * Test each parameter individually to isolate the issue - - - - - - - - - - */
-    function test_Debug_ParameterValidation() public {
+    function test_Debug_ParameterValidation() public view {
         LogUtils.logDebug("=== PARAMETER VALIDATION ===");
 
         // Check if any of our parameters are causing issues

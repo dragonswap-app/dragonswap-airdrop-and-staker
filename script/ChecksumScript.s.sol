@@ -10,14 +10,6 @@ import {console2} from "forge-std/console2.sol";
 import "../test/utils/LogUtils.sol";
 
 contract ChecksumScript is BaseDeployScript {
-    function setUp() public {
-        string memory rpcUrl = vm.envString("RPC_URL");
-
-        uint256 forkId = vm.createFork(rpcUrl);
-
-        vm.selectFork(forkId);
-    }
-
     struct CheckResult {
         bool passed;
         string message;
@@ -30,7 +22,7 @@ contract ChecksumScript is BaseDeployScript {
         address airdrop;
     }
 
-    function run() public {
+    function run() public view {
         LogUtils.logInfo("=== DEPLOYMENT CHECKSUM VERIFICATION ===");
 
         // Load addresses and configuration
@@ -379,7 +371,7 @@ contract ChecksumScript is BaseDeployScript {
 
     function summarizeChecks(CheckResult[] memory checks, uint256 count)
         internal
-        view
+        pure 
         returns (uint256 passed, uint256 total)
     {
         total = count;
