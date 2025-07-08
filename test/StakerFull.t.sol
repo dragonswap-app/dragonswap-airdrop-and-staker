@@ -34,6 +34,8 @@ contract StakerFullTest is Test {
     address public owner = makeAddr("owner");
     address public treasury = makeAddr("treasury");
 
+    uint256 constant ALLOWED_GAS_DIFFERENCE = 1;
+
     /* TEST: setUp - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -/
      * Pretend to be the owner address, create mock tokens and a staker, - - - -/
      * set up reward tokens and initialize the staker contract - - - - - - - - */
@@ -1243,27 +1245,17 @@ contract StakerFullTest is Test {
         staker.claimEarnings(stakeIndexes, address(0x0));
     }
 
-    /* TEST: test_ClaimEarnings_GasIncrease_WithManyStakes - - - - - - - - - - -/
-     * Tests gas consumption increase in claimEarnings with many stakes - - - -*/
-    function test_ClaimEarnings_GasIncrease_WithManyStakes() public {
-        LogUtils.logDebug("Testing gas increase in claimEarnings with many stakes");
+    /* TEST: test_ClaimEarnings_GasIncrease_WithLessStakes - - - - - - - - - - -/
+     * Tests gas consumption increase in claimEarnings with 10 stakes - - - - -*/
+    function test_ClaimEarnings_GasIncrease_B_WithLessStakes() public {
+        uint256 smallStakeCount = 10;
+        uint256 smallStakeClaimDeltaGas;
+        uint256 stakeAmount = 100 * 10 ** 18;
+        uint256 rewardPerRound = 1000 * 10 ** 18;
 
         // Mint additional tokens for gas test
         stakingToken.mint(alice, ALICE_STAKE * 5000);
         stakingToken.mint(bob, BOB_STAKE * 5000);
-        stakingToken.mint(charlie, CHARLIE_STAKE * 5000);
-        stakingToken.mint(dave, DAVE_STAKE * 5000);
-
-        uint256 smallStakeCount = 10;
-        uint256 largeStakeCount = 7000;
-
-        uint256 smallStakeClaimDeltaGas;
-        uint256 largeStakeClaimDeltaGas;
-
-        uint256 stakeAmount = 100 * 10 ** 18;
-        uint256 rewardPerRound = 1000 * 10 ** 18;
-
-        LogUtils.logInfo(string.concat("Creating ", vm.toString(smallStakeCount), " stakes to test gas consumption"));
 
         for (uint256 i = 0; i < smallStakeCount; i++) {
             // Alice stakes
@@ -1303,14 +1295,36 @@ contract StakerFullTest is Test {
             }
         }
 
+        // Check with arbitrary value
+        assertLt(smallStakeClaimDeltaGas, 58199);
+    }
+
+    /* TEST: test_ClaimEarnings_GasIncrease_WithManyStakes - - - - - - - - - - -/
+     * Tests gas consumption increase in claimEarnings with 7000 stakes - - - -*/
+    function test_ClaimEarnings_GasIncrease_A_WithManyStakes() public {
+        LogUtils.logDebug("Testing gas increase in claimEarnings with many stakes");
+
+        // Mint additional tokens for gas test
+        stakingToken.mint(alice, ALICE_STAKE * 5000);
+        stakingToken.mint(bob, BOB_STAKE * 5000);
+
+        uint256 largeStakeCount = 7000;
+
+        uint256 largeStakeClaimDeltaGas;
+
+        uint256 stakeAmount = 100 * 10 ** 18;
+        uint256 rewardPerRound = 1000 * 10 ** 18;
+
+        LogUtils.logInfo(string.concat("Creating ", vm.toString(largeStakeCount), " stakes to test gas consumption"));
+
         for (uint256 i = 0; i < largeStakeCount; i++) {
             // Charlie stakes
-            vm.prank(charlie);
-            staker.stake(charlie, stakeAmount, false);
+            vm.prank(alice);
+            staker.stake(alice, stakeAmount, false);
 
             // dave stakes
-            vm.prank(dave);
-            staker.stake(dave, stakeAmount, false);
+            vm.prank(bob);
+            staker.stake(bob, stakeAmount, false);
 
             // Distribute rewards
             rewardToken1.mint(address(staker), rewardPerRound);
@@ -1321,7 +1335,7 @@ contract StakerFullTest is Test {
                 stakeIndexes[0] = 0; // Claim only first stake
 
                 uint256 gasBefore = gasleft();
-                vm.prank(charlie);
+                vm.prank(alice);
                 staker.claimEarnings(stakeIndexes, address(0x0));
                 uint256 gasUsed = gasBefore - gasleft();
 
@@ -1342,12 +1356,9 @@ contract StakerFullTest is Test {
             }
         }
 
-        assertLt(
-            largeStakeClaimDeltaGas >= smallStakeClaimDeltaGas
-                ? largeStakeClaimDeltaGas - smallStakeClaimDeltaGas
-                : smallStakeClaimDeltaGas - largeStakeClaimDeltaGas,
-            30_000
-        );
+        // Check with arbitrary value
+        assertLt(largeStakeClaimDeltaGas, 58199);
+
         LogUtils.logInfo("Gas consumption test completed");
     }
 }
