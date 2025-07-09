@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {AirdropFactory} from "../src/AirdropFactory.sol";
-import {BaseDeployScript} from "./base/BaseDeployScript.sol";
+import {BaseDeployScript} from "./base/BaseDeployScript.s.sol";
 import "../test/utils/LogUtils.sol";
 
 contract DeployFactory is BaseDeployScript {

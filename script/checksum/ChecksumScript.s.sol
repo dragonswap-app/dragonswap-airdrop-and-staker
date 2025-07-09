@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {Airdrop} from "../src/Airdrop.sol";
-import {AirdropFactory} from "../src/AirdropFactory.sol";
-import {Staker} from "../src/Staker.sol";
-import {IStaker} from "../src/interfaces/IStaker.sol";
-import {BaseDeployScript} from "./base/BaseDeployScript.sol";
+import {Airdrop} from "../../src/Airdrop.sol";
+import {AirdropFactory} from "../../src/AirdropFactory.sol";
+import {Staker} from "../../src/Staker.sol";
+import {IStaker} from "../../src/interfaces/IStaker.sol";
+import {BaseDeployScript} from "../base/BaseDeployScript.s.sol";
 import {console2} from "forge-std/console2.sol";
-import "../test/utils/LogUtils.sol";
+import "../../test/utils/LogUtils.sol";
 
 contract ChecksumScript is BaseDeployScript {
     struct CheckResult {

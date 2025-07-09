@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 // File: script/02_DeployAirdropImpl.s.sol
 import {Airdrop} from "../src/Airdrop.sol";
-import {BaseDeployScript} from "./base/BaseDeployScript.sol";
+import {BaseDeployScript} from "./base/BaseDeployScript.s.sol";
 import {AirdropFactory} from "../src/AirdropFactory.sol";
 import "../test/utils/LogUtils.sol";
 
