@@ -5,7 +5,7 @@
     "signer": "",
     "token": "",
     "unlockTimestamps": [],
-    "defaultDepositValue" : 0
+    "depositAmount" : 0
   },
   "factory": {
     "owner": ""

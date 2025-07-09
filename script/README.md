@@ -38,7 +38,7 @@ Using the following components
     "signer": "0xSigner",
     "token": "0xToken",
     "unlockTimestamps": [],
-    "defaultDepositValue": 0
+    "depositAmount": 0
   },
   "factory": {
     "owner": "0xFactory"
@@ -210,7 +210,7 @@ See [general deployment](#deployment-steps-general) section for next steps.
 For `deploy-config.json`
 |input|description|
 |---|---|
-|defaultDepositValue|uint256 value to argument deposit() (as-is)|
+|depositAmount|uint256 value to argument deposit() (as-is)|
 
 
 For `deployed-addresses.json`
