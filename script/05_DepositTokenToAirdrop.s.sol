@@ -7,7 +7,7 @@ import {console2} from "forge-std/console2.sol";
 import {LogUtils} from "../test/utils/LogUtils.sol";
 
 contract DepositTokenToAirdrop is BaseDeployScript {
-    error DepositTokenToAirdrop__DepositAmountNotSet();
+    error DepositTokenToAirdrop__AirdropAddressNotSet();
 
     function run() public {
         // Load config file
@@ -18,7 +18,7 @@ contract DepositTokenToAirdrop is BaseDeployScript {
 
         // Check if deployed airdrop address exists
         if (!hasAddress("airdrop")) {
-            revert DepositTokenToAirdrop__DepositAmountNotSet();
+            revert DepositTokenToAirdrop__AirdropAddressNotSet();
         }
 
         // Get deployed airdrop address
