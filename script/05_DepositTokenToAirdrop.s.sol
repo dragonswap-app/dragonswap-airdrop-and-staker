@@ -8,6 +8,7 @@ import {LogUtils} from "../test/utils/LogUtils.sol";
 
 contract DepositTokenToAirdrop is BaseDeployScript {
     error DepositTokenToAirdrop__AirdropAddressNotSet();
+    error DepositTokenToAirdrop__DepositAmountIsZero();
 
     function run() public {
         // Load config file
@@ -15,6 +16,10 @@ contract DepositTokenToAirdrop is BaseDeployScript {
 
         // Lookup deployed addresses
         uint256 depositAmount = vm.parseJsonUint(config, ".airdrop.depositAmount");
+
+        if (depositAmount == 0) {
+            revert DepositTokenToAirdrop__DepositAmountIsZero();
+        }
 
         // Check if deployed airdrop address exists
         if (!hasAddress("airdrop")) {
