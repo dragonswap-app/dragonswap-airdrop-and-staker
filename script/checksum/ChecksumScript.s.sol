@@ -315,7 +315,7 @@ contract ChecksumScript is BaseDeployScript {
             }
         }
 
-        if (stakingTokenIsExpected) {
+        if (!stakingTokenIsExpected) {
             actualCount--;
         }
 
