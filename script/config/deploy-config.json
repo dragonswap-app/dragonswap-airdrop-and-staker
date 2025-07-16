@@ -1,21 +1,28 @@
 {
   "airdrop": {
-    "owner": "",
-    "treasury": "",
-    "signer": "",
-    "token": "",
-    "unlockTimestamps": [],
-    "depositAmount" : 0
+    "owner": "0x63Ad2e6EE72Ee962349447E334b9B97d78b8E682",
+    "signer": "0x9497DD7ab845255A27E1191d19a2359A775F8D13",
+    "token": "0x0a526e425809aea71eb279d24ae22dee6c92a4fe",
+    "unlockTimestamps": [1752674400, 1755352800],
+    "depositAmount" : 5000000000000000000000000
   },
   "factory": {
-    "owner": ""
+    "owner": "0xfeC4fA7d245C2588686483c8246d5D308CaB8c74"
   },
   "staker": {
-    "minimumDeposit": 0,
-    "owner": "",
-    "stakingToken": "",
-    "treasury": "",
-    "fee": 0,
-    "rewardTokens": []
+    "minimumDeposit": 1000000000000000000000,
+    "owner": "0x359F6fCcce980736F7537999c7Cb6bF2AFf66981",
+    "stakingToken": "0x0a526e425809aea71eb279d24ae22dee6c92a4fe",
+    "treasury": "0xCfdd78051e97108a5Ad47c7B5e2D7e3A9b4BD122",
+    "fee": 2000,
+    "rewardTokens": [
+      "0x160345fc359604fc6e70e3c5facbde5f7a9342d8",
+      "0x0555e30da8f98308edb960aa94c0db47230d2b9c",
+      "0x3894085ef7ff0f0aedf52e2a2704928d1ec074f1",
+      "0x9151434b16b9763660705744891fa906f660ecc5",
+      "0x5f0e07dfee5832faa00c63f2d33a0d79150e8598",
+      "0xe30fedd158a2e3b13e9badaeabafc5516e95e8c7",
+      "0x37a4dd9ced2b19cfe8fac251cd727b5787e45269"
+    ]
   }
 }
