@@ -8,6 +8,7 @@ import {IStaker} from "../../src/interfaces/IStaker.sol";
 import {BaseDeployScript} from "../base/BaseDeployScript.s.sol";
 import {console2} from "forge-std/console2.sol";
 import "../../test/utils/LogUtils.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract ChecksumScript is BaseDeployScript {
     struct CheckResult {
@@ -303,6 +304,20 @@ contract ChecksumScript is BaseDeployScript {
 
     function checkRewardTokens(Staker staker, address[] memory expected) internal view returns (CheckResult memory) {
         uint256 actualCount = staker.rewardTokensCounter();
+
+        bool stakingTokenIsExpected = false;
+
+        // If staking token is not present in expected, decrement actual count
+        for (uint256 i = 0; i < expected.length; i++) {
+            if (IERC20(expected[i]) == staker.stakingToken()) {
+                stakingTokenIsExpected = true;
+                break;
+            }
+        }
+
+        if (stakingTokenIsExpected) {
+            actualCount--;
+        }
 
         if (actualCount != expected.length) {
             return CheckResult({
