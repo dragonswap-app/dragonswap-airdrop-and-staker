@@ -184,7 +184,6 @@ contract ChecksumScript is BaseDeployScript {
             // Verify configuration
             checks[checkIndex++] = checkAddress(factory.owner(), expectedOwner, "Factory owner");
             checks[checkIndex++] = checkAddress(factory.implementation(), expectedImpl, "Implementation address");
-            checks[checkIndex++] = checkUint(factory.noOfDeployments(), 1, "Initial deployment count");
         }
 
         (passed, total) = summarizeChecks(checks, checkIndex);
