@@ -21,10 +21,11 @@ contract StakerFullTest is Test {
 
     uint256 constant PRECISION = 1_00_00;
     uint256 constant DEFAULT_FEE = 25_00; // 25% fee
-    uint256 constant LOCK_TIMESPAN = 30 days;
+    uint256 constant LOCK_TIMESPAN = 90 days;
     uint256 CENTURY22TIMESTAMP = 4102528271;
 
     Staker public staker;
+
     ERC20Mock public stakingToken;
     ERC20Mock public rewardToken1;
     ERC20Mock public rewardToken2;

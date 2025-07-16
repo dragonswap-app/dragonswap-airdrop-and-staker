@@ -19,6 +19,7 @@ contract StakerTest is Test {
     address public constant OWNER = address(1);
     address public constant TREASURY = address(2);
 
+    uint256 LOCK_TIMESPAN = 90 days;
     uint256 MINIMUM_DEPOSIT = 5 wei;
     uint256 public constant MINT_AMOUNT = 1_000_000e18;
 
@@ -43,7 +44,7 @@ contract StakerTest is Test {
         staker.stake(address(this), stakeAmount, true);
 
         // The earliest possible time the stake can be withdrawn
-        vm.warp(block.timestamp + 30 days);
+        vm.warp(block.timestamp + LOCK_TIMESPAN);
 
         assertEq(staker.pendingRewards(address(this), 0, address(rewardToken)), 0);
 
