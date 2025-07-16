@@ -35,17 +35,11 @@ contract DeployAirdropAndSetOnStaker is BaseDeployScript {
         AirdropFactory factory = AirdropFactory(factoryAddress);
         address instance = factory.deploy(token, stakerAddress, signer, owner, timestamps);
 
-        // Set active airdrop on the staker side
-       // Staker staker = Staker(stakerAddress);
-       // staker.setAirdropAddress(instance);
-
         vm.stopBroadcast();
 
-        string memory addressKey = "airdrop";
-        saveAddress(addressKey, instance);
+        saveAddress("airdrop", instance);
 
         console2.log("Deployed Airdrop (%s) at:", instance);
-        // console2.log("Set staker airdrop to (%s)", instance);
         return instance;
     }
 }
