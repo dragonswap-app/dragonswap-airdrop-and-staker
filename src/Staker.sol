@@ -42,7 +42,7 @@ contract Staker is Ownable, ReentrancyGuardTransient {
     /// @notice Base of a `stakeHash` - used to retrieve `rewardDebt``
     bytes32 private immutable debtHashBase = keccak256(abi.encode(block.chainid, address(this)));
     /// @notice Lock period length in seconds
-    uint256 public constant lockTimespan = 30 days;
+    uint256 public constant lockTimespan = 90 days;
     /// @notice The precision of `accRewardsPerShare`
     uint256 private constant accPrecision = 1e18;
     /// @notice The fee precision - bips
